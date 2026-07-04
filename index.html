@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  Geo-Gleiter: Die Formen-Jagd
+  ----------------------------------------------------------------------------
+  Ein rasantes, paedagogisches Browserspiel von JonFie Studios fuer Kinder
+  im Grundschulalter: Geometrische Formen und Farben erkennen und fangen.
+
+  Struktur (dieses File) / Aussehen (style.css) / Logik (game.js) getrennt –
+  gleiche flache Dateistruktur wie beim Schwester-Spiel "Uhrzeit-Uhu".
+
+  SPIELIDEE
+    Von oben fallen bunte CSS-Formen (Kreis, Quadrat, Dreieck, Raute,
+    Sechseck). Der Bordcomputer gibt einen Auftrag ("Sammle alle DREIECKE!").
+    Das Kind steuert den Geo-Gleiter (🚀) per Finger-Wischen nach links und
+    rechts und faengt nur die richtigen Formen.
+
+  LERN-PHASEN (steigen automatisch mit dem Level, Menue ⚙️):
+    - Phase 1 (Klasse 1)  : nur die FORM zaehlt ("Sammle Quadrate")
+    - Phase 2 (Klasse 1/2): FORM + FARBE ("Fange rote Dreiecke")
+    - Phase 3 (Klasse 2/3): UMKEHRLOGIK ("Alles, ABER KEINE Kreise!")
+
+  Hinweis: ?v=NUMMER hinter style.css/game.js erzwingt frische Dateien
+  (umgeht Browser-/CDN-Caches). Bei jeder Aenderung die Nummer erhoehen.
+
+  Barrierefreiheit: user-scalable=no ist BEWUSST gesetzt, damit das Wischen
+  auf Touch-Geraeten nicht versehentlich die Seite zoomt.
+  ============================================================================
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Lernspiel zu geometrischen Formen und Farben für Kinder im Grundschulalter.">
+  <meta name="theme-color" content="#131b3d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Geo-Gleiter: Die Formen-Jagd</title>
+
+  <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+
+<body>
+
+  <!-- Weltraum-Hintergrund: zwei Sternen-Ebenen, die per CSS-Animation nach
+       unten scrollen (Parallax = Gefuehl von Vorwaertsflug). Rein dekorativ. -->
+  <div class="weltraum" aria-hidden="true">
+    <div class="sterne sterne-fern"></div>
+    <div class="sterne sterne-nah"></div>
+  </div>
+
+  <!-- Roter Bildschirmrand-Blitz bei falsch gefangener Form (sanftes Feedback). -->
+  <div class="fehler-blitz" id="fehler-blitz" aria-hidden="true"></div>
+
+
+  <!-- 1) TOP-BAR: Marke links, Punkte/Rekord mittig, Zahnrad-Menue rechts
+       (gleicher Aufbau wie beim Uhrzeit-Uhu, damit man den Hersteller erkennt). -->
+  <header class="top-bar">
+    <!-- Klick auf die Marke zeigt Spielname + Studio -->
+    <button type="button" class="marke" id="button-about" aria-label="Über das Spiel">
+      <span class="marke-logo" aria-hidden="true">🚀</span>
+      <span class="marke-spalte">
+        <span class="marke-studio">JonFie Studios präsentiert:</span>
+        <span class="marke-text">Geo-Gleiter</span>
+      </span>
+    </button>
+    <div class="status">
+      <button type="button" class="stat" id="stat-punkte" aria-label="Aktuelle Punkte">
+        <span class="stat-icon" aria-hidden="true">⭐</span>
+        <span class="stat-wert" id="anzeige-punkte">0</span>
+      </button>
+      <button type="button" class="stat" id="stat-rekord" aria-label="Punkte-Rekord">
+        <span class="stat-icon" aria-hidden="true">🏆</span>
+        <span class="stat-wert" id="anzeige-rekord">0</span>
+      </button>
+    </div>
+    <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
+      <span class="menue-icon" aria-hidden="true">⚙️</span>
+    </button>
+  </header>
+
+
+  <!-- 2) AUFTRAGSKONSOLE: der "Bordcomputer" nennt den aktuellen Suchauftrag.
+       Wichtige Woerter (Form/Farbe) werden von game.js farbig hervorgehoben.
+       Der schmale Balken darunter zeigt den Fortschritt bis zum naechsten
+       Level (alle 10 richtigen Formen gibt es einen neuen Auftrag). -->
+  <section class="konsole" id="konsole" aria-live="polite">
+    <span class="konsole-label" id="konsole-label">🛰️ BORDCOMPUTER · LEVEL 1</span>
+    <p class="konsole-text" id="auftrag-text">Startklar machen …</p>
+    <div class="konsole-fortschritt" aria-hidden="true">
+      <div class="fortschritt-balken" id="fortschritt-balken"></div>
+    </div>
+  </section>
+
+
+  <!-- 3) SPIELFELD: hier fallen die Formen, unten fliegt der Geo-Gleiter.
+       Die fallenden Formen werden von game.js als <div class="form"> erzeugt.
+       touch-action:none (style.css) verhindert, dass das Wischen scrollt. -->
+  <main class="spielfeld" id="spielfeld" aria-label="Spielfeld">
+    <div class="gleiter" id="gleiter" aria-hidden="true">
+      <span class="gleiter-emoji">🚀</span>
+    </div>
+
+    <!-- Pause-Overlay: liegt ueber dem Spielfeld, solange pausiert ist. -->
+    <div class="pause-overlay" id="pause-overlay" hidden>
+      <p class="pause-titel">⏸️ Pause</p>
+      <button type="button" class="weiter-button" id="button-weiter">▶️ Weiter</button>
+    </div>
+  </main>
+
+
+  <!-- 4) FOOTER: unauffaellige Pause-/Neustart-Buttons. -->
+  <footer class="fuss-leiste">
+    <button type="button" class="fuss-button" id="button-pause">⏸️ Pause</button>
+    <button type="button" class="fuss-button" id="button-neustart">🔄 Neustart</button>
+  </footer>
+
+
+  <!-- Konfetti-Ebene fuer die Level-Up-Feier (von game.js befuellt). -->
+  <div class="konfetti-ebene" id="konfetti" aria-hidden="true"></div>
+
+  <!-- Kleines Popover: "Über das Spiel" + Erklaerung der Punkte-Chips. -->
+  <div class="popover" id="popover" role="status" hidden></div>
+
+
+  <!-- EINSTELLUNGS-SEITE (Zahnrad ⚙️) – gleicher Karten-Stil wie Uhrzeit-Uhu -->
+  <div class="modal-overlay" id="einstellungen" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Einstellungen">
+      <header class="modal-kopf">
+        <h2 class="modal-titel">⚙️ Einstellungen</h2>
+        <button type="button" class="modal-schliessen" id="einstellungen-zu" aria-label="Schließen">✕</button>
+      </header>
+
+      <div class="modal-inhalt">
+        <!-- Lern-Phase -->
+        <section class="opt-gruppe">
+          <h3 class="opt-titel">🧠 Lern-Phase</h3>
+          <div class="opt-reihe opt-reihe-vier">
+            <button type="button" class="opt-karte" data-setting="phase" data-wert="auto">
+              <span class="opt-icon">📈</span><span class="opt-name">Automatisch</span>
+              <span class="opt-text">wird mit jedem Level kniffliger</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="phase" data-wert="1">
+              <span class="opt-icon">🟦</span><span class="opt-name">Phase 1</span>
+              <span class="opt-text">nur Formen (Klasse 1)</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="phase" data-wert="2">
+              <span class="opt-icon">🎨</span><span class="opt-name">Phase 2</span>
+              <span class="opt-text">Form + Farbe (Klasse 1/2)</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="phase" data-wert="3">
+              <span class="opt-icon">🙃</span><span class="opt-name">Phase 3</span>
+              <span class="opt-text">„… aber KEINE …“ (Klasse 2/3)</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Tempo -->
+        <section class="opt-gruppe">
+          <h3 class="opt-titel">🚀 Tempo</h3>
+          <div class="opt-reihe">
+            <button type="button" class="opt-karte" data-setting="tempo" data-wert="ruhig">
+              <span class="opt-icon">🐢</span><span class="opt-name">Ruhig</span>
+              <span class="opt-text">zum Üben</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="tempo" data-wert="normal">
+              <span class="opt-icon">🚀</span><span class="opt-name">Normal</span>
+              <span class="opt-text">genau richtig</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="tempo" data-wert="flott">
+              <span class="opt-icon">☄️</span><span class="opt-name">Flott</span>
+              <span class="opt-text">für Profis</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Ton -->
+        <section class="opt-gruppe">
+          <h3 class="opt-titel">🔔 Soundeffekte</h3>
+          <div class="opt-reihe opt-reihe-zwei">
+            <button type="button" class="opt-karte" data-setting="toene" data-wert="an">
+              <span class="opt-icon">🔔</span><span class="opt-name">An</span>
+              <span class="opt-text">Klänge bei Treffer &amp; Fehler</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="toene" data-wert="aus">
+              <span class="opt-icon">🔕</span><span class="opt-name">Aus</span>
+              <span class="opt-text">ganz leise</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Rekord zuruecksetzen -->
+        <section class="opt-gruppe">
+          <h3 class="opt-titel">🧹 Fortschritt</h3>
+          <button type="button" class="reset-button" id="button-reset">
+            🗑️ Rekord zurücksetzen
+          </button>
+        </section>
+      </div>
+
+      <button type="button" class="modal-fertig" id="einstellungen-fertig">Fertig 👍</button>
+    </div>
+  </div>
+
+  <script src="game.js?v=1"></script>
+</body>
+</html>

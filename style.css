@@ -1,0 +1,715 @@
+/* ===========================================================================
+   Geo-Gleiter: Die Formen-Jagd  –  Stylesheet (style.css)
+   ---------------------------------------------------------------------------
+   Mobil-first, fuer Grundschueler. Wenig Text, grosse Symbole, grosse Formen.
+
+   DESIGN (gleiche Designsprache wie "Uhrzeit-Uhu" von JonFie Studios):
+     - gleiche Schriften (Baloo 2 fuer Ueberschriften, Nunito fuer Text)
+     - weisse Chips mit weichen, diffusen Schatten in der Top-Bar
+     - Zahnrad-Menue ⚙️ als weisser Kreis-Button rechts oben
+     - dunkles, edles Schild mit GOLDENER Schrift als Blickfang
+       (dort: Abfahrtszeit – hier: der Bordcomputer-Auftrag)
+     - Einstellungs-Seite mit denselben Options-Karten
+     - hier zusaetzlich: dunkler Weltraum als Buehne, Formen in leuchtenden
+       Grundfarben (starker Kontrast, gut erkennbar)
+
+   Die fallenden Formen sind REINES CSS (border-radius + clip-path),
+   keine Bilddateien – dadurch gestochen scharf und beliebig einfaerbbar.
+   =========================================================================== */
+
+
+/* 0) LOKALE SCHRIFTEN (offline-faehig, kein CDN) ---------------------------- */
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url("fonts/baloo2-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("fonts/nunito-latin.woff2") format("woff2");
+}
+
+
+/* 1) DESIGN-TOKENS ---------------------------------------------------------- */
+:root {
+  /* Weltraum-Buehne: dunkler Blauverlauf (Nacht-Stimmung wie beim Uhu) */
+  --bg-top: #2a3767;
+  --bg-mid: #16204a;
+  --bg-bot: #080d24;
+
+  /* Flaechen + Text (Chips/Modal bleiben WEISS – Wiedererkennung!) */
+  --surface:  #ffffff;
+  --ink:      #1e2c52;
+  --muted:    #5f6e96;
+  --on-dark:  #f4f8ff;
+
+  /* edles dunkles Schild (Bordcomputer-Konsole) */
+  --card-1: #2b4373;
+  --card-2: #1d2c54;
+
+  /* Akzente (identisch zum Uhrzeit-Uhu) */
+  --accent:   #ff9e2c;     /* Highlights / aktive Auswahl-Karte */
+  --cta:      #28c08a;     /* "Weiter"-Button (frisches Gruen) */
+  --cta-deep: #149e72;
+  --gold:     #f3c44a;     /* Konsolen-Schrift, wie die Abfahrts-Ziffern */
+
+  /* Die vier Grundfarben der fallenden Formen (leuchtend, eindeutig) */
+  --form-rot:   #ff5a4e;
+  --form-blau:  #3d8bff;
+  --form-gruen: #34d074;
+  --form-gelb:  #ffd23f;
+
+  /* Schriften */
+  --font-display: "Baloo 2", "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
+  --font-body:    "Nunito", "Trebuchet MS", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --radius:   22px;
+
+  /* weiche, diffuse Schatten = Wertigkeit (auf dunklem Grund etwas kraeftiger) */
+  --sh-soft:  0 14px 34px rgba(2, 8, 30, 0.45);
+  --sh-card:  0 8px 20px rgba(36, 64, 130, 0.14);
+  --sh-chip:  0 4px 12px rgba(2, 8, 30, 0.35);
+
+  /* Tempo des Sternen-Scrollens: wird von game.js pro Level leicht erhoeht */
+  --sterne-dauer: 10s;
+}
+
+
+/* 2) GRUND-LAYOUT ------------------------------------------------------------ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--on-dark);
+
+  background:
+    radial-gradient(120% 70% at 50% -20%, rgba(120, 150, 255, 0.20), transparent 55%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bot) 100%);
+  background-attachment: fixed;
+
+  display: flex;
+  flex-direction: column;
+  /* FESTE Bildschirmhoehe + overflow hidden: der Spielscreen scrollt NIE.
+     Das Spielfeld bekommt per flex:1 allen restlichen vertikalen Platz. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Auf grossen Bildschirmen (Tablet quer / Desktop) bleibt das Spiel eine
+   schmale Hochkant-Saeule in der Mitte – es ist ein Portrait-Spiel. */
+.top-bar, .konsole, .spielfeld, .fuss-leiste {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+
+/* 2b) WELTRAUM: scrollende Sternen-Ebenen ------------------------------------ */
+.weltraum {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Die Sterne sind winzige radiale Farbverlaeufe in einem Kachel-Muster.
+   Die Animation schiebt background-position-y um GENAU eine Kachelhoehe
+   nach unten -> nahtlose Endlos-Schleife. Zwei Ebenen mit verschiedenen
+   Geschwindigkeiten ergeben einen Parallax-Effekt (Flug-Gefuehl). */
+.sterne {
+  position: absolute;
+  inset: 0;
+}
+.sterne-fern {
+  background-image:
+    radial-gradient(1px 1px at 25px 35px,  rgba(255,255,255,0.7), transparent 55%),
+    radial-gradient(1px 1px at 130px 90px, rgba(255,255,255,0.5), transparent 55%),
+    radial-gradient(1px 1px at 70px 160px, rgba(255,255,255,0.6), transparent 55%),
+    radial-gradient(1px 1px at 180px 40px, rgba(255,255,255,0.4), transparent 55%);
+  background-size: 220px 220px;
+  animation: sterne-fall-fern calc(var(--sterne-dauer) * 2.2) linear infinite;
+}
+.sterne-nah {
+  background-image:
+    radial-gradient(2px 2px at 40px 60px,   #ffffff, transparent 55%),
+    radial-gradient(2px 2px at 150px 155px, #dfe8ff, transparent 55%),
+    radial-gradient(1.5px 1.5px at 90px 220px, #ffffff, transparent 55%),
+    radial-gradient(2px 2px at 220px 20px,  #cdd9ff, transparent 55%);
+  background-size: 260px 260px;
+  animation: sterne-fall-nah var(--sterne-dauer) linear infinite;
+}
+/* Jede Ebene wandert um EXAKT ihre eigene Kachelhoehe -> nahtlose Schleife. */
+@keyframes sterne-fall-fern {
+  from { background-position-y: 0; }
+  to   { background-position-y: 220px; }
+}
+@keyframes sterne-fall-nah {
+  from { background-position-y: 0; }
+  to   { background-position-y: 260px; }
+}
+
+/* Roter Rand-Blitz bei Fehlgriff: kurz einblenden, sanft ausblenden. */
+.fehler-blitz {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 0 6px rgba(255, 70, 60, 0.85),
+              inset 0 0 60px 20px rgba(255, 70, 60, 0.35);
+}
+.fehler-blitz.an { animation: blitz 0.55s ease-out; }
+@keyframes blitz { 12% { opacity: 1; } 100% { opacity: 0; } }
+
+
+/* 3) TOP-BAR ----------------------------------------------------------------- */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(14, 22, 52, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 18px rgba(2, 8, 30, 0.35);
+}
+
+.marke {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 14px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: transform 0.1s ease;
+}
+.marke:active { transform: scale(0.94); }
+/* Die Marke darf auf sehr schmalen Handys schrumpfen, damit Chips und
+   Zahnrad IMMER komplett sichtbar bleiben (Text wird notfalls gekuerzt). */
+.marke, .marke-spalte { min-width: 0; }
+.marke-spalte > span { overflow: hidden; text-overflow: ellipsis; }
+.marke-logo {
+  font-size: 1.9rem;
+  line-height: 1;
+  transform: rotate(-45deg);            /* Rakete zeigt nach oben */
+  filter: drop-shadow(0 4px 8px rgba(2, 8, 30, 0.5));
+}
+.marke-spalte { display: flex; flex-direction: column; line-height: 1.1; }
+.marke-studio {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;              /* Schriftzug nie umbrechen */
+  color: #9fb2e6;
+}
+.marke-text {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--on-dark);
+}
+
+/* Polierte Punkte-/Rekord-Chips: weiss, weicher Schatten, klare Zahl
+   (identischer Baustein wie die Pokal-Chips im Uhrzeit-Uhu). */
+.status { display: flex; gap: 8px; }
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px 7px 11px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  box-shadow: var(--sh-chip);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.stat:active { transform: scale(0.94); }
+.stat-icon { font-size: 1.3rem; line-height: 1; }
+.stat-wert {
+  font-size: 1.35rem;
+  font-weight: 800;
+  min-width: 1ch;
+  text-align: center;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Kurzer "Puls", wenn sich der Punktestand aendert */
+.stat.puls { animation: stat-puls 0.35s ease; }
+@keyframes stat-puls { 40% { transform: scale(1.14); } }
+
+/* Grosser, gut erreichbarer Zahnrad-Button (wie beim Uhu) */
+.menue-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  background: var(--surface);
+  border: none;
+  border-radius: 50%;
+  box-shadow: var(--sh-chip);
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.menue-button:active { transform: scale(0.9) rotate(35deg); }
+.menue-icon { font-size: 1.8rem; line-height: 1; }
+
+
+/* 4) AUFTRAGSKONSOLE (Bordcomputer) ------------------------------------------ */
+/* Dasselbe edle dunkle Schild wie die Abfahrts-Anzeige im Uhrzeit-Uhu:
+   dunkler Verlauf, goldene Schrift, weicher Schatten. */
+.konsole {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: calc(100% - 24px);
+  max-width: 560px;
+  margin: 10px auto 6px;
+  background: linear-gradient(160deg, var(--card-1), var(--card-2));
+  border-radius: var(--radius);
+  box-shadow: var(--sh-soft);
+  padding: clamp(8px, 1.6vh, 14px) 16px clamp(10px, 1.8vh, 16px);
+}
+.konsole-label {
+  font-family: var(--font-display);
+  font-size: clamp(0.72rem, 1.7vh, 0.9rem);
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #aebce6;
+}
+.konsole-text {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-align: center;
+  color: var(--gold);
+  font-size: clamp(1.25rem, min(6vw, 3.4vh), 2rem);
+  line-height: 1.2;
+}
+/* Hervorgehobene Woerter im Auftrag: Formwort weiss, Farbwort in Echtfarbe */
+.konsole-text .wort-form  { color: #ffffff; }
+.konsole-text .wort-nicht { color: #ff8d84; text-decoration: underline; }
+.konsole-text .farbe-rot   { color: var(--form-rot); }
+.konsole-text .farbe-blau  { color: var(--form-blau); }
+.konsole-text .farbe-gruen { color: var(--form-gruen); }
+.konsole-text .farbe-gelb  { color: var(--form-gelb); }
+
+/* Neuer Auftrag: Konsole huepft kurz, damit der Blick nach oben geht */
+.konsole.neu { animation: konsole-neu 0.6s ease; }
+@keyframes konsole-neu {
+  0%, 100% { transform: scale(1); }
+  35%      { transform: scale(1.05); }
+  65%      { transform: scale(0.99); }
+}
+
+/* Fortschritt bis zum naechsten Level (10 richtige Formen) */
+.konsole-fortschritt {
+  width: min(70%, 260px);
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.fortschritt-balken {
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cta), #7ce7bd);
+  transition: width 0.25s ease;
+}
+
+
+/* 5) SPIELFELD ---------------------------------------------------------------- */
+.spielfeld {
+  flex: 1;                 /* nimmt allen restlichen vertikalen Platz */
+  min-height: 0;
+  overflow: hidden;        /* Formen "verschwinden" sauber am Rand */
+  /* WICHTIG fuers Touch-Handling: der Browser darf Wischgesten hier NICHT
+     selbst verarbeiten (kein Scrollen/Zoomen) – sonst ruckelt die Steuerung. */
+  touch-action: none;
+  cursor: grab;
+}
+.spielfeld:active { cursor: grabbing; }
+
+/* Der Geo-Gleiter: ein Emoji-Raumschiff. Position kommt per transform aus
+   game.js (transform ist GPU-beschleunigt -> fluessig, kein Layout-Reflow). */
+.gleiter {
+  position: absolute;
+  left: 0;
+  bottom: 10px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+  pointer-events: none;    /* Finger steuert das FELD, nicht das Schiff */
+  z-index: 5;
+}
+.gleiter-emoji {
+  font-size: 52px;
+  line-height: 1;
+  transform: rotate(-45deg);            /* 🚀 zeigt damit senkrecht nach oben */
+  filter: drop-shadow(0 6px 12px rgba(2, 8, 30, 0.6));
+}
+/* Triebwerks-Schimmer unterm Schiff */
+.gleiter::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 190, 80, 0.85), transparent 70%);
+  animation: schub 0.5s ease-in-out infinite alternate;
+}
+@keyframes schub { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* Wackeln nach einem Fehlgriff (sanftes negatives Feedback, kein Game Over) */
+.gleiter.wackelt { animation: gleiter-wackeln 0.5s ease; }
+@keyframes gleiter-wackeln {
+  0%, 100% { rotate: 0deg; }
+  20%      { rotate: -14deg; }
+  50%      { rotate: 12deg; }
+  75%      { rotate: -7deg; }
+}
+
+/* --- Die fallenden Formen (REINES CSS, keine Bilder) ---------------------
+   Aufbau aus ZWEI Divs:
+     .form        = aeusserer Rahmen: Position (transform) + Leucht-Schatten.
+     .form-innen  = die eigentliche Silhouette per clip-path/border-radius.
+   Warum zweiteilig? clip-path wuerde einen box-shadow am selben Element
+   mit abschneiden – der Glow-Schatten liegt deshalb auf dem AEUSSEREN Div
+   (als drop-shadow-Filter, der der ausgeschnittenen Silhouette folgt).   */
+.form {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.25));
+}
+.form-innen { width: 100%; height: 100%; }
+
+/* Die fuenf Silhouetten */
+.form-kreis    .form-innen { border-radius: 50%; }
+.form-quadrat  .form-innen { border-radius: 14%; }
+.form-dreieck  .form-innen { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+.form-raute    .form-innen { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+.form-sechseck .form-innen { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+
+/* Die vier Grundfarben (kleiner Verlauf = leichte 3D-Wirkung) */
+.farbe-rot   .form-innen { background: linear-gradient(150deg, #ff8177, var(--form-rot) 65%); }
+.farbe-blau  .form-innen { background: linear-gradient(150deg, #7cb1ff, var(--form-blau) 65%); }
+.farbe-gruen .form-innen { background: linear-gradient(150deg, #74e6a4, var(--form-gruen) 65%); }
+.farbe-gelb  .form-innen { background: linear-gradient(150deg, #ffe382, var(--form-gelb) 65%); }
+
+/* Richtig gefangen: kurz aufleuchten + aufpoppen, dann entfernt game.js das Div */
+.form.gefangen { filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.9)); }
+.form.gefangen .form-innen { animation: form-pop 0.35s ease-out forwards; }
+@keyframes form-pop {
+  40%  { transform: scale(1.35); opacity: 1; }
+  100% { transform: scale(0.2);  opacity: 0; }
+}
+
+/* Falsch gefangen: grau werden und schnell verblassen */
+.form.daneben .form-innen { animation: form-weg 0.3s ease-out forwards; }
+@keyframes form-weg {
+  100% { transform: scale(0.6); opacity: 0; filter: grayscale(1); }
+}
+
+/* Schwebende "+10" / "−5"-Zahlen an der Fangstelle */
+.punkte-flug {
+  position: absolute;
+  z-index: 6;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  pointer-events: none;
+  animation: punkte-flug 0.8s ease-out forwards;
+}
+.punkte-flug.plus  { color: #7ce7bd; }
+.punkte-flug.minus { color: #ff8d84; }
+@keyframes punkte-flug {
+  from { transform: translateY(0);     opacity: 1; }
+  to   { transform: translateY(-60px); opacity: 0; }
+}
+
+/* Pause-Overlay */
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(8, 13, 36, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.pause-overlay[hidden] { display: none; }
+.pause-titel {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--on-dark);
+}
+.weiter-button {
+  min-height: 58px;
+  padding: 0 34px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, var(--cta), var(--cta-deep));
+  border: none;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(20, 158, 114, 0.30);
+  cursor: pointer;
+}
+.weiter-button:active { transform: translateY(2px); }
+
+
+/* 6) FOOTER: dezente Pause-/Neustart-Buttons ---------------------------------- */
+.fuss-leiste {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+}
+.fuss-button {
+  min-height: 40px;
+  padding: 6px 18px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #aebce6;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.fuss-button:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.16); }
+
+
+/* 7) KONFETTI + POPOVER (Bausteine wie beim Uhrzeit-Uhu) ----------------------- */
+.konfetti-ebene {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  overflow: hidden;
+}
+.konfetti {
+  position: absolute;
+  top: -18px;
+  width: 10px;
+  height: 14px;
+  border-radius: 3px;
+  animation: konfetti-fall 1.6s ease-in forwards;
+}
+@keyframes konfetti-fall {
+  to { transform: translateY(105vh) rotate(560deg); opacity: 0.85; }
+}
+
+.popover {
+  position: fixed;
+  z-index: 50;
+  max-width: 270px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 13px 15px;
+  border-radius: 16px;
+  box-shadow: var(--sh-soft);
+}
+.popover[hidden] { display: none; }
+/* About-Popover (Klick auf die Rakete): Spielname + Studio */
+.popover .about-titel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.popover .about-unter  { display: block; color: var(--muted); margin-bottom: 6px; }
+.popover .about-studio {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--cta-deep);
+  letter-spacing: 0.5px;
+}
+
+
+/* 8) EINSTELLUNGS-SEITE (identischer Baustil wie Uhrzeit-Uhu) ------------------ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 10, 28, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.modal-overlay.offen { display: flex; }
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  background: var(--surface);
+  border-radius: 26px;
+  box-shadow: var(--sh-soft);
+  overflow: hidden;
+}
+.modal-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 2px solid #eef1f8;
+}
+.modal-titel { font-family: var(--font-display); font-size: 1.7rem; color: var(--ink); }
+.modal-schliessen {
+  width: 44px; height: 44px;
+  font-size: 1.2rem; font-weight: 800;
+  color: var(--ink);
+  background: #eef1f8;
+  border: none; border-radius: 50%;
+  cursor: pointer;
+}
+.modal-schliessen:active { transform: scale(0.92); }
+
+.modal-inhalt { padding: 16px 20px; overflow-y: auto; }
+
+.opt-gruppe { margin-bottom: 20px; }
+.opt-titel { font-family: var(--font-display); font-size: 1.2rem; color: var(--ink); margin-bottom: 10px; }
+.opt-reihe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.opt-reihe-vier { grid-template-columns: repeat(2, 1fr); }
+.opt-reihe-zwei { grid-template-columns: repeat(2, 1fr); }
+
+.opt-karte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 14px 8px;
+  background: #f7f9fe;
+  border: 3px solid #f7f9fe;
+  border-radius: 18px;
+  box-shadow: var(--sh-card);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.opt-karte:active { transform: scale(0.96); }
+.opt-karte.aktiv { border-color: var(--accent); background: #fff5e6; }
+.opt-icon { font-size: 1.9rem; line-height: 1; }
+.opt-name { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: var(--ink); }
+.opt-text { font-size: 0.82rem; color: var(--muted); line-height: 1.15; }
+
+/* Rekord-zuruecksetzen-Button (dezent rot) */
+.reset-button {
+  width: 100%;
+  min-height: 54px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #c0392b;
+  background: #fdeeec;
+  border: 2px solid #f3c6c0;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.reset-button:active { transform: scale(0.98); background: #fbe2de; }
+
+.modal-fertig {
+  margin: 4px 20px 20px;
+  min-height: 58px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, var(--cta), var(--cta-deep));
+  border: none;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(20, 158, 114, 0.30);
+  cursor: pointer;
+}
+.modal-fertig:active { transform: translateY(2px); }
+
+
+/* 9) KLEINE BILDSCHIRME + BEWEGUNGS-REDUZIERUNG -------------------------------- */
+@media (max-width: 420px) {
+  .top-bar { padding: 8px 8px; gap: 6px; }
+  .marke { padding: 4px 2px; gap: 6px; }
+  .marke-text { font-size: 1.05rem; }
+  .marke-logo { font-size: 1.5rem; }
+  .marke-studio { font-size: 0.52rem; letter-spacing: 0.2px; }
+  .status { gap: 6px; }
+  .stat { padding: 6px 10px 6px 8px; gap: 4px; }
+  .stat-wert { font-size: 1.15rem; }
+  .menue-button { width: 44px; height: 44px; }
+  .menue-icon { font-size: 1.55rem; }
+  .opt-reihe { gap: 8px; }
+}
+@media (max-width: 370px) {
+  .marke-studio { font-size: 0.48rem; letter-spacing: 0; }
+  .stat { padding: 6px 9px 6px 7px; }
+}
+@media (max-height: 640px) {
+  .konsole { margin: 6px auto 4px; }
+  .konsole-fortschritt { height: 6px; margin-top: 3px; }
+}
+
+/* Nutzer:innen mit "Bewegung reduzieren": dekorative Animationen aus.
+   (Die fallenden Formen selbst sind der Spielkern und bleiben.) */
+@media (prefers-reduced-motion: reduce) {
+  .sterne, .gleiter::after, .konfetti { animation: none; }
+}
