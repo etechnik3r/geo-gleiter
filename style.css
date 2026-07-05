@@ -67,6 +67,10 @@
   --form-gruen: #34d074;
   --form-gelb:  #ffd23f;
 
+  /* Akzentfarbe des Raumschiffs (Spitze + Flossen). Eigene Variable, damit
+     spaetere Schiffs-Varianten nur diesen Wert tauschen muessen. */
+  --schiff-akzent: #ff5a4e;
+
   /* Schriften */
   --font-display: "Baloo 2", "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
   --font-body:    "Nunito", "Trebuchet MS", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -360,6 +364,44 @@ body {
 }
 
 
+/* 4b) ENERGIE-BALKEN -----------------------------------------------------------
+   Die "Lebensanzeige" des Schiffs: falsche Formen kosten Energie, ⚡-Kapseln
+   laden auf. Faerbt sich von Gruen ueber Gelb nach Rot und pulsiert, wenn es
+   knapp wird – leer bedeutet Missions-Ende. */
+.energie {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 24px);
+  max-width: 560px;
+  margin: 0 auto 4px;
+}
+.energie-icon { font-size: 1.05rem; line-height: 1; filter: drop-shadow(0 2px 4px rgba(2,8,30,0.5)); }
+.energie-rahmen {
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.energie-balken {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cta), #7ce7bd);
+  transition: width 0.3s ease;
+}
+.energie.mittel .energie-balken { background: linear-gradient(90deg, #ffb02c, #ffd23f); }
+.energie.knapp  .energie-balken { background: linear-gradient(90deg, #e6483c, #ff8d84); }
+.energie.knapp { animation: energie-alarm 0.7s ease-in-out infinite alternate; }
+@keyframes energie-alarm {
+  to { filter: drop-shadow(0 0 7px rgba(255, 90, 78, 0.85)); }
+}
+
+
 /* 5) SPIELFELD ---------------------------------------------------------------- */
 .spielfeld {
   flex: 1;                 /* nimmt allen restlichen vertikalen Platz */
@@ -372,43 +414,73 @@ body {
 }
 .spielfeld:active { cursor: grabbing; }
 
-/* Der Geo-Gleiter: ein Emoji-Raumschiff. Position kommt per transform aus
-   game.js (transform ist GPU-beschleunigt -> fluessig, kein Layout-Reflow).
-   Er schwebt ein Stueck ueber dem Feldrand – direkt darunter beginnt die
-   Wischflaeche, so verdeckt die Hand das Schiff nicht. */
+/* Der Geo-Gleiter: ein selbst gezeichnetes SVG-Raumschiff (Markup in
+   index.html). Position kommt per transform aus game.js (transform ist
+   GPU-beschleunigt -> fluessig, kein Layout-Reflow). Er schwebt ein Stueck
+   ueber dem Feldrand – direkt darunter beginnt die Wischflaeche, so
+   verdeckt die Hand das Schiff nicht. */
 .gleiter {
   position: absolute;
   left: 0;
   bottom: 14px;
   width: 64px;
-  height: 64px;
+  height: 76px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   will-change: transform;
   pointer-events: none;    /* Finger steuert das FELD, nicht das Schiff */
   z-index: 5;
 }
-.gleiter-emoji {
-  font-size: 52px;
-  line-height: 1;
-  transform: rotate(-45deg);            /* 🚀 zeigt damit senkrecht nach oben */
+.gleiter-svg {
+  width: 58px;
+  height: 72px;
+  display: block;
   filter: drop-shadow(0 6px 12px rgba(2, 8, 30, 0.6));
 }
-/* Triebwerks-Schimmer unterm Schiff */
-.gleiter::after {
-  content: "";
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  width: 22px;
-  height: 22px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 190, 80, 0.85), transparent 70%);
-  animation: schub 0.5s ease-in-out infinite alternate;
+/* Die Triebwerksflamme flackert dauerhaft (Laenge + Breite atmen leicht) */
+.gleiter-flamme {
+  transform-origin: 32px 61px;
+  animation: flamme-flackern 0.16s ease-in-out infinite alternate;
 }
-@keyframes schub { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes flamme-flackern {
+  from { transform: scaleY(0.82) scaleX(0.94); opacity: 0.85; }
+  to   { transform: scaleY(1.08) scaleX(1.06); opacity: 1; }
+}
+
+/* Der SCHUTZSCHILD: eine schimmernde Energie-Blase um das Schiff.
+   Sichtbar, solange Ladungen uebrig sind (Klasse .schild an .gleiter);
+   bei nur noch 1 Ladung wird er duenner/gestrichelt (.schild-schwach),
+   ein abgefangener Treffer laesst ihn hell aufblitzen (.schild-blitz). */
+.gleiter-schild {
+  position: absolute;
+  inset: -10px -6px;
+  border-radius: 50%;
+  display: none;
+  pointer-events: none;
+  border: 2.5px solid rgba(150, 215, 255, 0.8);
+  background: radial-gradient(circle,
+              rgba(120, 200, 255, 0.05) 55%,
+              rgba(120, 200, 255, 0.18) 80%,
+              rgba(170, 225, 255, 0.4) 100%);
+  box-shadow: 0 0 18px rgba(120, 200, 255, 0.55),
+              inset 0 0 16px rgba(120, 200, 255, 0.35);
+  animation: schild-schimmern 1.6s ease-in-out infinite alternate;
+}
+.gleiter.schild .gleiter-schild { display: block; }
+.gleiter.schild-schwach .gleiter-schild {
+  opacity: 0.6;
+  border-style: dashed;
+}
+.gleiter.schild-blitz .gleiter-schild { animation: schild-blitz 0.45s ease-out; }
+@keyframes schild-schimmern {
+  from { opacity: 0.75; transform: scale(0.985); }
+  to   { opacity: 1;    transform: scale(1.03); }
+}
+@keyframes schild-blitz {
+  0%   { filter: brightness(2.4); transform: scale(1.12); }
+  100% { filter: brightness(1);   transform: scale(1); }
+}
 
 /* Kleine Flamme am Schiff nach einem Fehlgriff: ploppt kurz auf und
    verpufft nach oben – ruhiges, klares Feedback statt wildem Wackeln. */
@@ -508,9 +580,10 @@ body {
   filter: brightness(0.5);
 }
 
-/* --- BONUS-EXTRAS (Energiekapsel ⚡ / Treibstofftank ⛽) -------------------
-   Goldene, pulsierende Kapseln: einsammeln lohnt sich IMMER (+25 Punkte),
-   egal was der Auftrag sagt. */
+/* --- BONUS-EXTRAS (⚡ Energiekapsel / 🛡️ Schutzschild) ---------------------
+   Pulsierende Kapseln, einsammeln lohnt sich IMMER – egal was der Auftrag
+   sagt: die goldene ⚡-Kapsel laedt den Energie-Balken wieder auf, die
+   blaue 🛡️-Kapsel legt einen Schutzschild um das Schiff. */
 .form.bonus .bonus-kapsel {
   width: 100%;
   height: 100%;
@@ -522,9 +595,17 @@ body {
   border: 3px solid #ffffff;
   animation: bonus-puls 0.9s ease-in-out infinite alternate;
 }
+.form.bonus-schild .bonus-kapsel {
+  background: radial-gradient(circle at 35% 30%, #eaf7ff, #7cc4ff 60%, #2f7fe0);
+  animation-name: bonus-puls-blau;
+}
 @keyframes bonus-puls {
   from { box-shadow: 0 0 10px rgba(255, 215, 100, 0.55); transform: scale(0.96); }
   to   { box-shadow: 0 0 26px rgba(255, 225, 130, 0.95); transform: scale(1.04); }
+}
+@keyframes bonus-puls-blau {
+  from { box-shadow: 0 0 10px rgba(120, 195, 255, 0.55); transform: scale(0.96); }
+  to   { box-shadow: 0 0 26px rgba(140, 210, 255, 0.95); transform: scale(1.04); }
 }
 
 /* Richtig gefangen: kurz aufleuchten + aufpoppen, dann entfernt game.js das Div */
@@ -597,6 +678,17 @@ body {
   cursor: pointer;
 }
 .weiter-button:active { transform: translateY(2px); }
+
+/* Missions-Ende (Energie leer): gleicher Bau wie das Pause-Overlay,
+   nur mit Ergebnis-Text und "Neue Mission"-Button. */
+.ende-overlay { z-index: 22; }
+.ende-text {
+  max-width: 320px;
+  text-align: center;
+  font-size: 1.15rem;
+  line-height: 1.4;
+  color: var(--on-dark);
+}
 
 
 /* 6) WISCHFLAECHE: Steuerbereich unter dem Raumschiff --------------------------
@@ -816,7 +908,7 @@ body {
    Die 3D-Drehung bleibt (nur langsamer) – ohne sie waere ein Wuerfel nicht
    von einem Quadrat zu unterscheiden, sie ist also Spiel-Information. */
 @media (prefers-reduced-motion: reduce) {
-  .gleiter::after, .konfetti { animation: none; }
+  .gleiter-flamme, .gleiter-schild, .konfetti { animation: none; }
   .form.bonus .bonus-kapsel { animation: none; }
   .obj3d { animation-duration: 12s; }
 }

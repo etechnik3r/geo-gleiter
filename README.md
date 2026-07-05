@@ -23,9 +23,20 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
   einzelnen Flächen, die sich dauerhaft um **zwei Achsen** drehen – man
   erkennt jederzeit, dass es Körper sind (kein „Dreieck, das Pyramide
   heißt“). Sie tauchen je nach Schwierigkeit ab bestimmten Leveln auf.
-- **Bonus-Extras:** ⚡ Energiekapseln und ⛽ Treibstofftanks fallen alle
-  paar Sekunden als goldene, pulsierende Kapseln – einsammeln gibt
-  **immer +25**, egal was der Auftrag sagt.
+- **Energie-Mechanik mit echter Spannung:** Das Schiff startet mit vollem
+  Energie-Balken. Jede **falsch** gefangene Form kostet Energie (je nach
+  Schwierigkeitsstufe unterschiedlich viel) – ist der Balken leer, ist die
+  **Mission zu Ende** (Ergebnis-Anzeige + „Neue Mission“-Button; Punkte und
+  Level starten wieder bei 0, nur der Rekord bleibt). Der Balken färbt sich
+  von Grün über Gelb nach Rot und pulsiert, wenn es knapp wird.
+- **Bonus-Extras:** goldene ⚡-Energiekapseln laden den Balken wieder auf
+  (und kommen öfter, wenn die Energie knapp ist), blaue 🛡️-Schutzschild-
+  Kapseln legen eine schimmernde Energie-Blase um das Schiff, die die
+  nächsten **2 Fehlgriffe** abfängt. Beides gibt zusätzlich +25 Punkte.
+- **Eigenes SVG-Raumschiff:** der Geo-Gleiter ist ein selbst gezeichnetes
+  Vektor-Raumschiff mit flackernder Triebwerksflamme – auf jedem Gerät
+  identisch (kein System-Emoji mehr) und vorbereitet für spätere
+  Schiffs-Varianten (Akzentfarbe über `--schiff-akzent` in `style.css`).
 - **Drei Lern-Phasen** (automatisch steigend oder im Menü ⚙️ fest wählbar):
   - **Phase 1 (Klasse 1):** nur die Form zählt („Sammle Quadrate!“)
   - **Phase 2 (Klasse 1/2):** Form **und** Farbe („Fange rote Dreiecke!“)
@@ -47,10 +58,10 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
   Spielfeld funktioniert weiterhin (relative Drag-Steuerung; am Desktop
   gehen auch Maus und Pfeiltasten). Pause ⏸️ und Neustart 🔄 sitzen oben
   in der Top-Bar, wo sie beim Wischen nicht im Weg sind.
-- **Punktesystem ohne Frust:** richtige Form **+10** (leuchtet auf und
-  zerplatzt), falsche Form **−5** mit ruhigem Feedback: kurzer Brumm-Sound,
-  eine kleine 🔥-Flamme am Schiff, roter Rand-Blitz – **kein Game Over**,
-  verpasste Formen kosten nichts, der Punktestand fällt nie unter 0.
+- **Faires Feedback:** richtige Form **+10** (leuchtet auf und zerplatzt),
+  falsche Form **−5** und Energie-Verlust mit ruhigem Feedback: kurzer
+  Brumm-Sound, eine kleine 🔥-Flamme am Schiff, roter Rand-Blitz.
+  Verpasste Formen kosten nichts, der Punktestand fällt nie unter 0.
 - **3D-Sternenfeld:** ein Canvas-Weltraum mit ~140 Sternen in echter
   Tiefenstaffelung – nahe Sterne sind groß, hell und schnell, ferne klein
   und langsam, und beim Lenken driften sie unterschiedlich stark zur Seite
@@ -120,6 +131,8 @@ Häufige Stellschrauben liegen zentral am Anfang von `game.js`:
 
 - **Punkte & Level-Rhythmus:** `PUNKTE_RICHTIG`, `PUNKTE_FALSCH`,
   `PUNKTE_BONUS`, `ZIEL_PRO_LEVEL`
+- **Energie & Schild:** `ENERGIE_MAX`, `ENERGIE_KAPSEL_PLUS`,
+  `ENERGIE_LEVEL_BONUS`, `SCHILD_LADUNGEN`, `energieVerlust` (in `STUFEN`)
 - **Schwierigkeit:** `STUFEN` (Tempo, Dichte, Größen, Trefferquote, Rampe),
   `TEMPO_DECKEL`, `ATEMPAUSE_SEK`
 - **Formen-Vorrat pro Stufe/Level:** `aktiverFormenPool()`

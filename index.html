@@ -14,10 +14,16 @@
     Stern – und spaeter echte 3D-Objekte wie Wuerfel und Pyramide, die sich
     im Raum drehen). Der Bordcomputer gibt einen Auftrag ("Sammle alle
     DREIECKE!") – auf Wunsch auch per SPRACHAUSGABE fuer Kinder, die noch
-    nicht lesen koennen. Das Kind steuert den Geo-Gleiter (🚀) per Wischen
-    auf der Wischflaeche unter dem Schiff (oder direkt auf dem Spielfeld)
-    und faengt nur die richtigen Formen. Zwischendurch fallen Extras wie
-    Energiekapseln und Treibstofftanks – die geben immer Bonuspunkte.
+    nicht lesen koennen. Das Kind steuert den Geo-Gleiter (selbst gebautes
+    SVG-Raumschiff) per Wischen auf der Wischflaeche unter dem Schiff
+    (oder direkt auf dem Spielfeld) und faengt nur die richtigen Formen.
+
+  ENERGIE-MECHANIK (das Herz der Spannung):
+    Das Schiff startet mit voller Energie. Jede FALSCH gefangene Form
+    kostet Energie – ist der Balken leer, ist die Mission zu Ende
+    (Neustart-Angebot). Eingesammelte ⚡-Energiekapseln laden den Balken
+    wieder auf, ein 🛡️-Schutzschild-Extra legt einen schimmernden Schild
+    um das Schiff, der zwei Fehlgriffe abfaengt.
 
   LERN-PHASEN (steigen automatisch mit dem Level, Menue ⚙️):
     - Phase 1 (Klasse 1)  : nur die FORM zaehlt ("Sammle Quadrate")
@@ -47,7 +53,7 @@
 
   <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
 
@@ -113,18 +119,60 @@
   </section>
 
 
+  <!-- 2b) ENERGIE-BALKEN: die "Lebensanzeige" des Schiffs. Falsche Formen
+       kosten Energie, ⚡-Kapseln laden auf. Leer = Mission zu Ende. -->
+  <div class="energie" id="energie" aria-label="Energie des Raumschiffs">
+    <span class="energie-icon" aria-hidden="true">⚡</span>
+    <div class="energie-rahmen" aria-hidden="true">
+      <div class="energie-balken" id="energie-balken"></div>
+    </div>
+  </div>
+
+
   <!-- 3) SPIELFELD: hier fallen die Formen, unten fliegt der Geo-Gleiter.
        Die fallenden Formen werden von game.js als <div class="form"> erzeugt.
        touch-action:none (style.css) verhindert, dass das Wischen scrollt. -->
   <main class="spielfeld" id="spielfeld" aria-label="Spielfeld">
+    <!-- Der Geo-Gleiter: ein SELBST GEZEICHNETES SVG-Raumschiff (kein
+         System-Emoji mehr – deren Grafik ist je nach Geraet unberechenbar,
+         teils sogar mit fest eingebauten Sternchen). Eigenes SVG heisst:
+         ueberall identisch, animierbare Triebwerksflamme und spaeter
+         leicht Varianten baubar (andere Farben, mehr Duesen, groesser).
+         Der Akzentfarbton haengt an der CSS-Variable --schiff-akzent. -->
     <div class="gleiter" id="gleiter" aria-hidden="true">
-      <span class="gleiter-emoji">🚀</span>
+      <span class="gleiter-schild"></span>
+      <svg class="gleiter-svg" viewBox="0 0 64 80">
+        <!-- Triebwerksflamme (flackert per CSS-Animation) -->
+        <g class="gleiter-flamme">
+          <path d="M32 61 C38.5 66 39.5 71 32 79.5 C24.5 71 25.5 66 32 61 Z" fill="#ff9e2c"/>
+          <path d="M32 63 C36 66.5 36.5 70 32 75 C27.5 70 28 66.5 32 63 Z" fill="#ffd23f"/>
+        </g>
+        <!-- Duese -->
+        <path d="M26 55.5 L38 55.5 L40.5 62 L23.5 62 Z" fill="#8fa1c7" stroke="#26355e" stroke-width="1.5"/>
+        <!-- Seitenflossen -->
+        <path d="M24.5 37 C17.5 42.5 14.5 51 14.5 60.5 L25 53 Z" fill="var(--schiff-akzent)" stroke="#26355e" stroke-width="1.5"/>
+        <path d="M39.5 37 C46.5 42.5 49.5 51 49.5 60.5 L39 53 Z" fill="var(--schiff-akzent)" stroke="#26355e" stroke-width="1.5"/>
+        <!-- Rumpf -->
+        <path d="M24 20.5 L40 20.5 C41.5 36 40.6 47.5 38.2 56.5 L25.8 56.5 C23.4 47.5 22.5 36 24 20.5 Z" fill="#eef3ff" stroke="#26355e" stroke-width="1.5"/>
+        <!-- Spitze -->
+        <path d="M32 2 C37.5 8 40 14 40 21.5 L24 21.5 C24 14 26.5 8 32 2 Z" fill="var(--schiff-akzent)" stroke="#26355e" stroke-width="1.5"/>
+        <!-- Bullauge -->
+        <circle cx="32" cy="31.5" r="6.5" fill="#3d8bff" stroke="#ffffff" stroke-width="2.5"/>
+        <circle cx="30" cy="29.5" r="2" fill="#bcd9ff"/>
+      </svg>
     </div>
 
     <!-- Pause-Overlay: liegt ueber dem Spielfeld, solange pausiert ist. -->
     <div class="pause-overlay" id="pause-overlay" hidden>
       <p class="pause-titel">⏸️ Pause</p>
       <button type="button" class="weiter-button" id="button-weiter">▶️ Weiter</button>
+    </div>
+
+    <!-- Missions-Ende-Overlay: erscheint, wenn die Energie leer ist. -->
+    <div class="pause-overlay ende-overlay" id="ende-overlay" hidden>
+      <p class="pause-titel">🔋 Energie leer!</p>
+      <p class="ende-text" id="ende-text"></p>
+      <button type="button" class="weiter-button" id="button-nochmal">🚀 Neue Mission</button>
     </div>
   </main>
 
@@ -240,6 +288,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=2"></script>
+  <script src="game.js?v=3"></script>
 </body>
 </html>

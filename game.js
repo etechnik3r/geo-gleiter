@@ -8,12 +8,20 @@
      Von oben fallen bunte Formen. Der Bordcomputer gibt einen Auftrag
      ("Sammle alle DREIECKE!") – sichtbar oben als Text + Symbol UND auf
      Wunsch vorgelesen (Sprachausgabe fuer Kinder, die noch nicht lesen).
-     Das Kind wischt auf der Wischflaeche unter dem Schiff (oder direkt auf
-     dem Spielfeld), um den Geo-Gleiter (🚀) zu steuern. Richtig = +10,
-     falsch = −5 (nie unter 0, KEIN Game Over). Alle 10 richtigen Formen:
-     kurze ATEMPAUSE (es fallen keine neuen Formen), dann neuer Auftrag.
-     Zwischendurch fallen goldene Extras (⚡ Energiekapsel, ⛽ Treibstoff):
-     Einsammeln gibt IMMER +25 Bonuspunkte.
+     Das Kind wischt auf der Wischflaeche unter dem Schiff (oder direkt
+     auf dem Spielfeld), um den Geo-Gleiter zu steuern. Richtig = +10
+     Punkte. Alle 10 richtigen Formen: kurze ATEMPAUSE (es fallen keine
+     neuen Formen), dann neuer Auftrag.
+
+   ENERGIE-MECHANIK (die Spannung im Spiel):
+     Das Schiff startet mit voller Energie (Balken unter der Konsole).
+     Jede FALSCH gefangene Form kostet Energie (je nach Schwierigkeit
+     unterschiedlich viel). Ist der Balken leer -> MISSIONS-ENDE mit
+     Ergebnis und "Neue Mission"-Button; Punkte/Level starten wieder bei 0,
+     nur der Rekord bleibt. Gegensteuern kann man mit den Extras:
+       ⚡ Energiekapsel : laedt den Balken wieder auf (+ Bonuspunkte)
+       🛡️ Schutzschild  : schimmernde Blase um das Schiff, faengt die
+                          naechsten 2 Fehlgriffe ab (ohne Energieverlust)
 
    FORMEN
      2D  : Kreis, Quadrat, Dreieck, Raute, Sechseck, Stern – als Inline-SVG
@@ -84,25 +92,31 @@
   // Punkte & Level-Rhythmus
   const PUNKTE_RICHTIG = 10;   // richtige Form gefangen
   const PUNKTE_FALSCH  = 5;    // falsche Form gefangen (wird abgezogen)
-  const PUNKTE_BONUS   = 25;   // Energiekapsel / Treibstofftank
+  const PUNKTE_BONUS   = 25;   // eingesammeltes Extra (⚡/🛡️)
   const ZIEL_PRO_LEVEL = 10;   // alle 10 richtigen Formen -> neues Level
 
-  // Bonus-Extras: fallen alle 12–20 Sekunden, immer gut zu fangen.
-  const BONUS_ARTEN = [
-    { art: "energie",    emoji: "⚡", name: "Energiekapsel" },
-    { art: "treibstoff", emoji: "⛽", name: "Treibstofftank" }
-  ];
+  // Energie-Mechanik
+  const ENERGIE_MAX          = 100;
+  const ENERGIE_KAPSEL_PLUS  = 35;   // so viel laedt eine ⚡-Kapsel auf
+  const ENERGIE_LEVEL_BONUS  = 15;   // kleines Aufladen als Level-Belohnung
+  const SCHILD_LADUNGEN      = 2;    // so viele Fehlgriffe faengt 🛡️ ab
+
+  // Bonus-Extras (Details siehe bonusErzeugen):
+  //   ⚡ faellt regelmaessig (oefter, wenn die Energie knapp ist),
+  //   🛡️ ist seltener und kommt nur, wenn gerade kein Schild aktiv ist.
+  const BONUS_EMOJI = { energie: "⚡", schild: "🛡️" };
 
   // DIE DREI SCHWIERIGKEITSSTUFEN (Menue ⚙️):
-  //   fallDauer    = Sekunden vom oberen bis zum unteren Rand (Level 1)
-  //   spawnAbstand = Sekunden zwischen zwei neuen Formen (Level 1)
-  //   formMin/Max  = Groessen-Streuung der Formen in Pixel
-  //   trefferQuote = Anteil der Formen, die zum Auftrag passen
-  //   rampe        = wie viel schneller/dichter es PRO LEVEL wird
+  //   fallDauer     = Sekunden vom oberen bis zum unteren Rand (Level 1)
+  //   spawnAbstand  = Sekunden zwischen zwei neuen Formen (Level 1)
+  //   formMin/Max   = Groessen-Streuung der Formen in Pixel
+  //   trefferQuote  = Anteil der Formen, die zum Auftrag passen
+  //   rampe         = wie viel schneller/dichter es PRO LEVEL wird
+  //   energieVerlust= wie viel Energie ein Fehlgriff kostet
   const STUFEN = {
-    leicht: { fallDauer: 7.0, spawnAbstand: 2.4,  formMin: 52, formMax: 88, trefferQuote: 0.55, rampe: 0.04 },
-    mittel: { fallDauer: 5.2, spawnAbstand: 1.7,  formMin: 42, formMax: 80, trefferQuote: 0.45, rampe: 0.05 },
-    schwer: { fallDauer: 4.0, spawnAbstand: 1.25, formMin: 36, formMax: 74, trefferQuote: 0.40, rampe: 0.06 }
+    leicht: { fallDauer: 7.0, spawnAbstand: 2.4,  formMin: 52, formMax: 88, trefferQuote: 0.55, rampe: 0.04, energieVerlust: 18 },
+    mittel: { fallDauer: 5.2, spawnAbstand: 1.7,  formMin: 42, formMax: 80, trefferQuote: 0.45, rampe: 0.05, energieVerlust: 25 },
+    schwer: { fallDauer: 4.0, spawnAbstand: 1.25, formMin: 36, formMax: 74, trefferQuote: 0.40, rampe: 0.06, energieVerlust: 34 }
   };
   const TEMPO_DECKEL = 0.5;    // nie schneller als 50 % der Grund-Falldauer
 
@@ -113,7 +127,7 @@
 
   // Groesse des Gleiters (Pixel)
   const GLEITER_BREITE = 64;   // muss zu .gleiter in style.css passen
-  const GLEITER_HOEHE  = 64;
+  const GLEITER_HOEHE  = 72;   // das SVG-Schiff ist hoeher als das alte Emoji
   const GLEITER_BODEN  = 14;   // Abstand des Gleiters vom unteren Feldrand
 
 
@@ -127,6 +141,10 @@
     auftrag: null,           // { phase, form, farbe } – siehe auftragWuerfeln()
     formen: [],              // alle Formen/Extras, die gerade fallen
     pausiert: false,
+    vorbei: false,           // true = Energie leer, Missions-Ende-Overlay offen
+
+    energie: ENERGIE_MAX,    // 0..100 – leer bedeutet Missions-Ende
+    schild: 0,               // uebrige Schutzschild-Ladungen (0 = kein Schild)
 
     // Gleiter-Steuerung: zielX = wohin der Finger will, gleiterX = wo das
     // Schiff wirklich ist (gleitet weich hinterher -> fuehlt sich gut an).
@@ -141,8 +159,10 @@
     // gesetzt -> Atempause (sie muss erst wieder auf 0 hochzaehlen).
     letzteZeit: 0,
     spawnUhr: 0,
-    bonusUhr: 0,
-    naechsterBonus: 14,      // Sekunden bis zum naechsten Extra (wird gewuerfelt)
+    energieUhr: 0,
+    naechsteEnergie: 14,     // Sekunden bis zur naechsten ⚡-Kapsel (gewuerfelt)
+    schildUhr: 0,
+    naechsterSchild: 35,     // Sekunden bis zum naechsten 🛡️-Extra (gewuerfelt)
     runde: 0,                // zaehlt Neustarts (entwertet alte Level-Up-Timer)
 
     einstellungen: {
@@ -168,6 +188,11 @@
     auftragText:   $("auftrag-text"),
     auftragSymbol: $("auftrag-symbol"),
     fortschritt:   $("fortschritt-balken"),
+    energie:       $("energie"),
+    energieBalken: $("energie-balken"),
+    endeOverlay:   $("ende-overlay"),
+    endeText:      $("ende-text"),
+    buttonNochmal: $("button-nochmal"),
     punkte:        $("anzeige-punkte"),
     rekord:        $("anzeige-rekord"),
     statPunkte:    $("stat-punkte"),
@@ -453,22 +478,24 @@
     });
   }
 
-  // Erzeugt ein goldenes Bonus-Extra (Energiekapsel / Treibstofftank).
-  // Extras zaehlen NICHT zum Auftrag – einsammeln gibt immer +25.
-  function bonusErzeugen() {
-    const art = zufallAus(BONUS_ARTEN);
+  // Erzeugt ein Bonus-Extra: "energie" (goldene ⚡-Kapsel, laedt den
+  // Energie-Balken) oder "schild" (blaue 🛡️-Kapsel, aktiviert den
+  // Schutzschild). Extras zaehlen NICHT zum Auftrag – einsammeln ist
+  // immer gut und gibt zusaetzlich +25 Punkte.
+  function bonusErzeugen(art) {
     const groesse = 54;
     const div = document.createElement("div");
-    div.className = "form bonus";
+    div.className = "form bonus" + (art === "schild" ? " bonus-schild" : "");
     div.style.width = groesse + "px";
     div.style.height = groesse + "px";
     div.innerHTML = '<div class="bonus-kapsel" style="font-size:' +
-                    Math.round(groesse * 0.55) + 'px">' + art.emoji + "</div>";
+                    Math.round(groesse * 0.55) + 'px">' +
+                    BONUS_EMOJI[art] + "</div>";
     el.spielfeld.appendChild(div);
 
     state.formen.push({
       el: div,
-      form: art.art,
+      form: art,
       farbe: null,
       bonus: true,
       groesse: groesse,
@@ -511,9 +538,9 @@
     const dt = Math.min((zeitstempel - state.letzteZeit) / 1000, 0.05);
     state.letzteZeit = zeitstempel;
 
-    // Pausiert (Pause-Knopf, Menue offen, Tab unsichtbar)? Dann nur die
-    // Zeitmessung weiterfuehren, aber nichts bewegen.
-    if (state.pausiert) return;
+    // Pausiert (Pause-Knopf, Menue offen, Tab unsichtbar) oder Mission
+    // vorbei (Energie leer)? Dann nur die Zeitmessung weiterfuehren.
+    if (state.pausiert || state.vorbei) return;
 
     /* --- a) Nachschub: alle spawnAbstand() Sekunden eine neue Form ---
        Waehrend der Atempause steht spawnUhr im Minus und muss sich erst
@@ -524,13 +551,24 @@
       formErzeugen();
     }
 
-    /* --- a2) Bonus-Extras auf eigener, gemuetlicher Uhr --- */
+    /* --- a2) Bonus-Extras auf eigenen, gemuetlichen Uhren ---
+       ⚡-Kapseln kommen regelmaessig – und BEWUSST oefter, wenn die Energie
+       knapp ist (heimliche Rettungsleine fuer kleine Spieler:innen).
+       🛡️-Schilde sind seltener und nur, wenn keins aktiv ist.            */
     if (state.spawnUhr >= 0) {           // in der Atempause auch keine Extras
-      state.bonusUhr += dt;
-      if (state.bonusUhr >= state.naechsterBonus) {
-        state.bonusUhr = 0;
-        state.naechsterBonus = zufallZwischen(12, 20);
-        bonusErzeugen();
+      state.energieUhr += dt;
+      if (state.energieUhr >= state.naechsteEnergie) {
+        state.energieUhr = 0;
+        state.naechsteEnergie = state.energie < 40
+          ? zufallZwischen(7, 12)
+          : zufallZwischen(13, 20);
+        bonusErzeugen("energie");
+      }
+      state.schildUhr += dt;
+      if (state.schildUhr >= state.naechsterSchild) {
+        state.schildUhr = 0;
+        state.naechsterSchild = zufallZwischen(30, 50);
+        if (state.schild === 0) bonusErzeugen("schild");
       }
     }
 
@@ -682,10 +720,16 @@
     state.formen.splice(state.formen.indexOf(f), 1);
 
     if (f.bonus) {
-      /* BONUS-EXTRA: immer gut! +25, Funkel-Sound. */
+      /* BONUS-EXTRA: immer gut! +25 Punkte, dazu die Spezial-Wirkung. */
       f.el.classList.add("gefangen");
       punkteAendern(+PUNKTE_BONUS, f.x, f.y, "bonus");
-      tonBonus();
+      if (f.form === "energie") {
+        energieAendern(+ENERGIE_KAPSEL_PLUS);
+        tonBonus();
+      } else {
+        schildAktivieren();
+        tonSchildAn();
+      }
     } else if (passtZumAuftrag(f)) {
       /* RICHTIG: Form poppt leuchtend auf, +10 Punkte, Fortschritt hoch */
       f.el.classList.add("gefangen");
@@ -696,14 +740,26 @@
       if (state.richtigeImLevel >= ZIEL_PRO_LEVEL) {
         levelAufstieg();
       }
+    } else if (state.schild > 0) {
+      /* FALSCH, aber der SCHUTZSCHILD faengt den Treffer ab: Schild
+         blitzt hell auf, verliert eine Ladung – keine Energie, keine
+         Minuspunkte. Bei 0 Ladungen verschwindet die Blase. */
+      f.el.classList.add("daneben");
+      state.schild -= 1;
+      schildAnzeigen();
+      tonSchildTreffer();
+      el.gleiter.classList.remove("schild-blitz");
+      void el.gleiter.offsetWidth;
+      el.gleiter.classList.add("schild-blitz");
     } else {
       /* FALSCH: ruhiges, klares Feedback – kurzer Brumm-Sound, eine kleine
-         Flamme ploppt am Schiff auf, der Rand blinkt rot, −5 Punkte.
-         (Bewusst KEIN wildes Hin- und Herwackeln des Schiffs.) */
+         Flamme ploppt am Schiff auf, der Rand blinkt rot, −5 Punkte UND
+         Energie-Verlust. Ist der Balken leer -> Missions-Ende. */
       f.el.classList.add("daneben");
       punkteAendern(-PUNKTE_FALSCH, f.x, f.y);
       tonFalsch();
       flammeZeigen();
+      energieAendern(-stufe().energieVerlust);
 
       el.fehlerBlitz.classList.remove("an");
       void el.fehlerBlitz.offsetWidth;             // Animation neu starten
@@ -715,6 +771,47 @@
     setTimeout(() => divWeg.remove(), 400);
 
     fortschrittAnzeigen();
+  }
+
+  // Energie aendern (+/-), Balken aktualisieren, bei 0 Missions-Ende.
+  function energieAendern(delta) {
+    state.energie = begrenzen(state.energie + delta, 0, ENERGIE_MAX);
+    energieAnzeigen();
+    if (state.energie <= 0) missionEnde();
+  }
+
+  // Energie-Balken faerben: gruen -> gelb (unter 55 %) -> rot (unter 30 %).
+  function energieAnzeigen() {
+    el.energieBalken.style.width = state.energie + "%";
+    el.energie.classList.toggle("knapp", state.energie <= 30);
+    el.energie.classList.toggle("mittel",
+      state.energie > 30 && state.energie <= 55);
+  }
+
+  // Schutzschild aktivieren (volle Ladungen) bzw. Anzeige aktualisieren.
+  function schildAktivieren() {
+    state.schild = SCHILD_LADUNGEN;
+    schildAnzeigen();
+  }
+  function schildAnzeigen() {
+    el.gleiter.classList.toggle("schild", state.schild > 0);
+    el.gleiter.classList.toggle("schild-schwach", state.schild === 1);
+  }
+
+  // MISSIONS-ENDE: die Energie ist leer. Overlay mit Ergebnis zeigen,
+  // Spiel anhalten – "Neue Mission" startet frisch bei 0 Punkten.
+  function missionEnde() {
+    if (state.vorbei) return;
+    state.vorbei = true;
+    el.endeText.textContent =
+      "Dein Raumschiff hat keine Energie mehr. " +
+      "Du hast " + state.punkte + " Punkte geschafft und Level " +
+      state.level + " erreicht!";
+    el.endeOverlay.hidden = false;
+    tonEnde();
+    sprechen("Oh nein, die Energie ist leer! Du hast " + state.punkte +
+             " Punkte geschafft. Versuch es gleich nochmal!");
+    speichern();
   }
 
   // Kleine Flamme am Schiff (Fehlgriff-Feedback statt Wackeln).
@@ -772,6 +869,7 @@
     state.level += 1;
     state.richtigeImLevel = 0;
     state.spawnUhr = -ATEMPAUSE_SEK;             // Atempause: nichts spawnt
+    energieAendern(+ENERGIE_LEVEL_BONUS);        // kleine Energie-Belohnung
     konfettiRegnen();
     tonLevelUp();
     speichern();
@@ -830,6 +928,10 @@
   function steuerungEinrichten() {
     [el.spielfeld, el.wischZone].forEach((zone) => {
       zone.addEventListener("pointerdown", (e) => {
+        // Tipp auf einen Button oder ein Overlay (Pause / Missions-Ende)?
+        // Dann NICHT steuern und vor allem NICHT capturen – sonst schluckt
+        // der Pointer-Capture den Klick, bevor er den Button erreicht.
+        if (e.target.closest("button, .pause-overlay")) return;
         fingerAktiv = true;
         fingerLetztesX = e.clientX;
         // Auch wenn der Finger die Zone kurz verlaesst: Events weiter an uns
@@ -910,10 +1012,24 @@
     ton(200, 0, 0.16, "square", 0.10);
     ton(150, 0.10, 0.18, "square", 0.08);
   }
-  function tonBonus() {    // glitzerndes Aufwaerts-Arpeggio fuer Extras
+  function tonBonus() {    // glitzerndes Aufwaerts-Arpeggio fuer ⚡-Energie
     ton(784,  0,    0.10, "triangle", 0.22);
     ton(988,  0.07, 0.10, "triangle", 0.22);
     ton(1319, 0.14, 0.22, "triangle", 0.24);
+  }
+  function tonSchildAn() { // sattes "Aufladen" beim Einsammeln von 🛡️
+    ton(330, 0,    0.14, "sine", 0.22);
+    ton(494, 0.10, 0.14, "sine", 0.22);
+    ton(659, 0.20, 0.26, "sine", 0.24);
+  }
+  function tonSchildTreffer() { // heller "Pling" – Schild hat abgefangen
+    ton(1175, 0,    0.08, "sine", 0.20);
+    ton(880,  0.06, 0.14, "sine", 0.16);
+  }
+  function tonEnde() {     // sanft absteigende Toene (kein Schreck-Sound)
+    ton(523, 0,    0.18, "triangle", 0.22);
+    ton(415, 0.16, 0.18, "triangle", 0.20);
+    ton(330, 0.32, 0.34, "triangle", 0.18);
   }
   function tonLevelUp() {  // kleine Fanfare
     ton(523, 0,    0.14, "triangle", 0.25);
@@ -999,20 +1115,32 @@
     el.buttonPause.textContent = an ? "▶️" : "⏸️";
     el.buttonPause.setAttribute("aria-label", an ? "Weiter" : "Pause");
   }
-  function pauseUmschalten() { pauseSetzen(!state.pausiert); }
+  function pauseUmschalten() {
+    if (state.vorbei) return;    // nach Missions-Ende zaehlt nur "Neue Mission"
+    pauseSetzen(!state.pausiert);
+  }
 
-  // Neustart: Punkte/Level auf Anfang, Spielfeld leeren, neuer Auftrag.
+  // Neustart ("Neue Mission"): Punkte/Level/Energie auf Anfang,
+  // Spielfeld leeren, neuer Auftrag. Der Rekord bleibt natuerlich.
   function neustart() {
     state.runde += 1;
     state.punkte = 0;
     state.level = 1;
     state.richtigeImLevel = 0;
     state.spawnUhr = 0;
-    state.bonusUhr = 0;
-    state.naechsterBonus = zufallZwischen(12, 20);
+    state.energieUhr = 0;
+    state.naechsteEnergie = zufallZwischen(13, 20);
+    state.schildUhr = 0;
+    state.naechsterSchild = zufallZwischen(30, 50);
+    state.energie = ENERGIE_MAX;
+    state.schild = 0;
+    state.vorbei = false;
     state.formen.forEach((f) => f.el.remove());
     state.formen = [];
     el.punkte.textContent = "0";
+    el.endeOverlay.hidden = true;
+    energieAnzeigen();
+    schildAnzeigen();
     fortschrittAnzeigen();
     auftragWuerfeln();
     pauseSetzen(false);
@@ -1103,8 +1231,9 @@
     });
     el.statPunkte.addEventListener("click", () => {
       popoverZeigen(el.statPunkte,
-        "⭐ Deine Punkte: richtige Form +10, falsche Form −5, " +
-        "Bonus-Extra (⚡/⛽) +25.");
+        "⭐ Deine Punkte: richtige Form +10, falsche Form −5 und " +
+        "Energie-Verlust! ⚡ lädt die Energie auf, 🛡️ schützt vor " +
+        "2 Fehlgriffen (beide +25 Punkte).");
     });
     el.statRekord.addEventListener("click", () => {
       popoverZeigen(el.statRekord,
@@ -1129,7 +1258,9 @@
     sterneEinrichten();
     state.gleiterX = state.feldBreite / 2;   // Schiff startet in der Mitte
     state.zielX = state.gleiterX;
-    state.naechsterBonus = zufallZwischen(12, 20);
+    state.naechsteEnergie = zufallZwischen(13, 20);
+    state.naechsterSchild = zufallZwischen(30, 50);
+    energieAnzeigen();
 
     // Stimmen laden Browser oft erst asynchron nach
     stimmeWaehlen();
@@ -1146,6 +1277,7 @@
     el.buttonPause.addEventListener("click", pauseUmschalten);
     el.buttonWeiter.addEventListener("click", () => pauseSetzen(false));
     el.buttonNeustart.addEventListener("click", neustart);
+    el.buttonNochmal.addEventListener("click", neustart);
 
     // Bildschirm gedreht oder Fenster veraendert? Feld + Sterne neu vermessen.
     window.addEventListener("resize", () => {
@@ -1154,8 +1286,9 @@
     });
 
     // Tab in den Hintergrund? Automatisch pausieren (fair + spart Akku).
+    // Nach dem Missions-Ende nicht: dort liegt schon das Ende-Overlay.
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) pauseSetzen(true);
+      if (document.hidden && !state.vorbei) pauseSetzen(true);
     });
 
     // Die Game-Loop anwerfen: ab jetzt uebernimmt requestAnimationFrame.
