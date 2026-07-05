@@ -5,33 +5,50 @@
    Ein Spiel von JonFie Studios – Schwester-Spiel des "Uhrzeit-Uhu".
 
    SPIELPRINZIP
-     Von oben fallen bunte CSS-Formen. Der Bordcomputer gibt einen Auftrag
-     ("Sammle alle DREIECKE!"). Das Kind wischt mit dem Finger nach links/
-     rechts, um den Geo-Gleiter (🚀) zu steuern und die richtigen Formen
-     einzusammeln. Richtig = +10 Punkte, falsch = −5 Punkte (nie unter 0,
-     KEIN Game Over). Alle 10 richtigen Formen: neues Level, neuer Auftrag,
-     etwas hoeheres Tempo.
+     Von oben fallen bunte Formen. Der Bordcomputer gibt einen Auftrag
+     ("Sammle alle DREIECKE!") – sichtbar oben als Text + Symbol UND auf
+     Wunsch vorgelesen (Sprachausgabe fuer Kinder, die noch nicht lesen).
+     Das Kind wischt auf der Wischflaeche unter dem Schiff (oder direkt auf
+     dem Spielfeld), um den Geo-Gleiter (🚀) zu steuern. Richtig = +10,
+     falsch = −5 (nie unter 0, KEIN Game Over). Alle 10 richtigen Formen:
+     kurze ATEMPAUSE (es fallen keine neuen Formen), dann neuer Auftrag.
+     Zwischendurch fallen goldene Extras (⚡ Energiekapsel, ⛽ Treibstoff):
+     Einsammeln gibt IMMER +25 Bonuspunkte.
+
+   FORMEN
+     2D  : Kreis, Quadrat, Dreieck, Raute, Sechseck, Stern – als Inline-SVG
+           mit exakter Geometrie (regelmaessiges Sechseck!) + weisser Kontur.
+     3D  : Wuerfel und Pyramide – echte CSS-3D-Koerper, die sich um zwei
+           Achsen drehen, damit man den Koerper wirklich erkennt.
+           (Sie tauchen je nach Schwierigkeit ab bestimmten Leveln auf.)
 
    LERN-PHASEN (Einstellung "Automatisch" folgt dem Level):
      Phase 1: nur die FORM zaehlt            (Level 1–3)
      Phase 2: FORM und FARBE muessen stimmen (Level 4–6)
      Phase 3: Umkehrlogik "ABER KEINE …"     (ab Level 7)
 
+   SCHWIERIGKEIT (Menue ⚙️): Leicht / Mittel / Schwer skaliert Tempo,
+     Formen-Dichte, Groessen-Streuung und den Formen-Vorrat. Innerhalb
+     einer Runde steigt die Dichte/Geschwindigkeit zusaetzlich pro Level –
+     Level 1 startet bewusst SEHR luftig (wenige Formen).
+
    INHALT
      1. Konstanten & Konfiguration
      2. Spielzustand (State) inkl. Einstellungen
      3. HTML-Referenzen
      4. Hilfsfunktionen
-     5. Auftrag (Mission) wuerfeln + anzeigen
-     6. Formen erzeugen (Spawnen)
-     7. DIE GAME-LOOP (requestAnimationFrame)   <-- Kern des Spiels
-     8. KOLLISIONSABFRAGE (Rechteck-Test)       <-- ausfuehrlich erklaert
-     9. Feedback: richtig / falsch / Level-Up
-    10. TOUCH-STEUERUNG (Wisch-Drag)            <-- ausfuehrlich erklaert
-    11. Soundeffekte (Web Audio, programmatisch erzeugt)
-    12. Speichern (localStorage)
-    13. Pause, Neustart, Einstellungen, Popover
-    14. Start
+     5. Formen-Baukasten (SVG + CSS-3D-Markup)
+     6. Auftrag (Mission) wuerfeln + anzeigen + VORLESEN
+     7. Formen & Extras erzeugen (Spawnen)
+     8. DIE GAME-LOOP (requestAnimationFrame)   <-- Kern des Spiels
+     9. Sternenfeld (Canvas, echte Tiefe)
+    10. KOLLISIONSABFRAGE (Rechteck-Test)
+    11. Feedback: richtig / falsch / Bonus / Level-Up
+    12. TOUCH-STEUERUNG (Wisch-Drag, Spielfeld + Wischflaeche)
+    13. Soundeffekte (Web Audio) + Sprachausgabe (Speech Synthesis)
+    14. Speichern (localStorage)
+    15. Pause, Neustart, Einstellungen, Popover
+    16. Start
    ===========================================================================*/
 
 (function () {
@@ -42,15 +59,18 @@
 
   const SPEICHER_SCHLUESSEL = "geo-gleiter-state";
 
-  // Die fuenf Formen mit deutschen Namen (Mehrzahl fuer die Auftrags-Texte).
+  // Alle Formen mit deutschen Namen (Mehrzahl fuer Auftrags-Texte).
+  // dreiD:true = wird als rotierender CSS-3D-Koerper dargestellt.
   const FORMEN = {
     kreis:    { mehrzahl: "Kreise" },
     quadrat:  { mehrzahl: "Quadrate" },
     dreieck:  { mehrzahl: "Dreiecke" },
     raute:    { mehrzahl: "Rauten" },
-    sechseck: { mehrzahl: "Sechsecke" }
+    sechseck: { mehrzahl: "Sechsecke" },
+    stern:    { mehrzahl: "Sterne" },
+    wuerfel:  { mehrzahl: "Würfel",    dreiD: true },
+    pyramide: { mehrzahl: "Pyramiden", dreiD: true }
   };
-  const FORM_NAMEN = Object.keys(FORMEN);
 
   // Die vier Grundfarben (adjektiv = fuer Texte wie "rote KREISE").
   const FARBEN = {
@@ -64,32 +84,37 @@
   // Punkte & Level-Rhythmus
   const PUNKTE_RICHTIG = 10;   // richtige Form gefangen
   const PUNKTE_FALSCH  = 5;    // falsche Form gefangen (wird abgezogen)
+  const PUNKTE_BONUS   = 25;   // Energiekapsel / Treibstofftank
   const ZIEL_PRO_LEVEL = 10;   // alle 10 richtigen Formen -> neues Level
 
-  // Tempo-Voreinstellungen (Menue ⚙️): fallDauer = Sekunden, die eine Form
-  // vom oberen bis zum unteren Rand braucht (bei Level 1).
-  // spawnAbstand = Sekunden zwischen zwei neuen Formen (bei Level 1).
-  const TEMPO_CONFIG = {
-    ruhig:  { fallDauer: 6.0, spawnAbstand: 1.5 },
-    normal: { fallDauer: 4.6, spawnAbstand: 1.15 },
-    flott:  { fallDauer: 3.6, spawnAbstand: 0.9 }
+  // Bonus-Extras: fallen alle 12–20 Sekunden, immer gut zu fangen.
+  const BONUS_ARTEN = [
+    { art: "energie",    emoji: "⚡", name: "Energiekapsel" },
+    { art: "treibstoff", emoji: "⛽", name: "Treibstofftank" }
+  ];
+
+  // DIE DREI SCHWIERIGKEITSSTUFEN (Menue ⚙️):
+  //   fallDauer    = Sekunden vom oberen bis zum unteren Rand (Level 1)
+  //   spawnAbstand = Sekunden zwischen zwei neuen Formen (Level 1)
+  //   formMin/Max  = Groessen-Streuung der Formen in Pixel
+  //   trefferQuote = Anteil der Formen, die zum Auftrag passen
+  //   rampe        = wie viel schneller/dichter es PRO LEVEL wird
+  const STUFEN = {
+    leicht: { fallDauer: 7.0, spawnAbstand: 2.4,  formMin: 52, formMax: 88, trefferQuote: 0.55, rampe: 0.04 },
+    mittel: { fallDauer: 5.2, spawnAbstand: 1.7,  formMin: 42, formMax: 80, trefferQuote: 0.45, rampe: 0.05 },
+    schwer: { fallDauer: 4.0, spawnAbstand: 1.25, formMin: 36, formMax: 74, trefferQuote: 0.40, rampe: 0.06 }
   };
+  const TEMPO_DECKEL = 0.5;    // nie schneller als 50 % der Grund-Falldauer
 
-  // Pro Level wird alles ~5 % schneller – aber gedeckelt, damit es fuer
-  // Kinderhaende immer noch fair bleibt.
-  const TEMPO_PRO_LEVEL = 0.05;
-  const TEMPO_DECKEL    = 0.55;    // nie schneller als 55 % der Grund-Falldauer
+  // Atempause beim Auftragswechsel: so lange kommen KEINE neuen Formen
+  // (die alten fallen noch zu Ende – der Bildschirm leert sich kurz).
+  const ATEMPAUSE_SEK = 3.2;
+  const AUFTRAG_VERZOEGERUNG_MS = 1800;  // dann erscheint der neue Auftrag
 
-  // Wie oft eine Form fallen soll, die zum Auftrag passt (Rest = Ablenker).
-  // Genug Treffer-Chancen halten kleine Spieler:innen bei Laune.
-  const TREFFER_QUOTE = 0.45;
-
-  // Groesse der Formen und des Gleiters (Pixel)
-  const FORM_MIN = 44;
-  const FORM_MAX = 64;
+  // Groesse des Gleiters (Pixel)
   const GLEITER_BREITE = 64;   // muss zu .gleiter in style.css passen
   const GLEITER_HOEHE  = 64;
-  const GLEITER_BODEN  = 10;   // Abstand des Gleiters vom unteren Feldrand
+  const GLEITER_BODEN  = 14;   // Abstand des Gleiters vom unteren Feldrand
 
 
   /* 2. SPIELZUSTAND (STATE) ------------------------------------------------ */
@@ -100,7 +125,7 @@
     level: 1,
     richtigeImLevel: 0,      // Zaehler bis ZIEL_PRO_LEVEL
     auftrag: null,           // { phase, form, farbe } – siehe auftragWuerfeln()
-    formen: [],              // alle Formen, die gerade fallen
+    formen: [],              // alle Formen/Extras, die gerade fallen
     pausiert: false,
 
     // Gleiter-Steuerung: zielX = wohin der Finger will, gleiterX = wo das
@@ -112,14 +137,19 @@
     feldBreite: 0,
     feldHoehe: 0,
 
-    // Zeitmessung fuer Loop + Spawner
+    // Zeitmessung fuer Loop + Spawner. spawnUhr wird beim Level-Up NEGATIV
+    // gesetzt -> Atempause (sie muss erst wieder auf 0 hochzaehlen).
     letzteZeit: 0,
     spawnUhr: 0,
+    bonusUhr: 0,
+    naechsterBonus: 14,      // Sekunden bis zum naechsten Extra (wird gewuerfelt)
+    runde: 0,                // zaehlt Neustarts (entwertet alte Level-Up-Timer)
 
     einstellungen: {
       phase: "auto",         // "auto" | "1" | "2" | "3"
-      tempo: "normal",       // "ruhig" | "normal" | "flott"
-      toene: "an"            // "an" | "aus"
+      stufe: "mittel",       // "leicht" | "mittel" | "schwer"
+      toene: "an",           // "an" | "aus"
+      sprache: "an"          // "an" | "aus"  (Aufgaben vorlesen)
     }
   };
 
@@ -130,10 +160,13 @@
 
   const el = {
     spielfeld:     $("spielfeld"),
+    wischZone:     $("wisch-zone"),
     gleiter:       $("gleiter"),
+    weltraum:      $("weltraum"),
     konsole:       $("konsole"),
     konsoleLabel:  $("konsole-label"),
     auftragText:   $("auftrag-text"),
+    auftragSymbol: $("auftrag-symbol"),
     fortschritt:   $("fortschritt-balken"),
     punkte:        $("anzeige-punkte"),
     rekord:        $("anzeige-rekord"),
@@ -172,10 +205,21 @@
     return Math.max(min, Math.min(max, wert));
   }
 
+  // Aktive Schwierigkeitsstufe (Konfigurations-Objekt aus STUFEN)
+  function stufe() {
+    return STUFEN[state.einstellungen.stufe] || STUFEN.mittel;
+  }
+
   // Tempo-Faktor des aktuellen Levels: Level 1 = 1.0, dann pro Level
-  // etwas schneller, aber nie unter den Deckel.
+  // etwas schneller (rampe haengt an der Schwierigkeitsstufe), gedeckelt.
   function levelFaktor() {
-    return Math.max(TEMPO_DECKEL, 1 - (state.level - 1) * TEMPO_PRO_LEVEL);
+    return Math.max(TEMPO_DECKEL, 1 - (state.level - 1) * stufe().rampe);
+  }
+
+  // Aktuelle Falldauer in Sekunden (Stufe x Level) – auch das Sternenfeld
+  // richtet sich danach, damit Flug und Formen zusammenpassen.
+  function aktuelleFallDauer() {
+    return stufe().fallDauer * levelFaktor();
   }
 
   // Aktive Lern-Phase: fest eingestellt oder automatisch aus dem Level.
@@ -185,6 +229,33 @@
     if (state.level <= 3) return 1;      // erst nur Formen
     if (state.level <= 6) return 2;      // dann Form + Farbe
     return 3;                            // dann Umkehrlogik
+  }
+
+  // FORMEN-VORRAT: welche Formen aktuell im Spiel sind, haengt an
+  // Schwierigkeitsstufe UND Level. So faengt jede Runde uebersichtlich an
+  // und wird nach und nach bunter (inkrementelle Schwierigkeit).
+  function aktiverFormenPool() {
+    const s = state.einstellungen.stufe;
+    const l = state.level;
+    if (s === "leicht") {
+      const p = ["kreis", "quadrat", "dreieck"];
+      if (l >= 3) p.push("raute");
+      if (l >= 5) p.push("sechseck");
+      if (l >= 7) p.push("stern");
+      return p;
+    }
+    if (s === "schwer") {
+      const p = ["kreis", "quadrat", "dreieck", "raute", "sechseck", "stern"];
+      if (l >= 2) p.push("wuerfel");
+      if (l >= 3) p.push("pyramide");
+      return p;
+    }
+    // mittel
+    const p = ["kreis", "quadrat", "dreieck", "raute", "sechseck"];
+    if (l >= 3) p.push("stern");
+    if (l >= 5) p.push("wuerfel");
+    if (l >= 7) p.push("pyramide");
+    return p;
   }
 
   // Spielfeld neu vermessen (Start, Resize, Drehen des Geraets)
@@ -198,20 +269,68 @@
   }
 
 
-  /* 5. AUFTRAG (MISSION) WUERFELN + ANZEIGEN -------------------------------- */
+  /* 5. FORMEN-BAUKASTEN (SVG + CSS-3D-Markup) ---------------------------------
+     Die 2D-Formen sind Inline-SVG: exakte Geometrie (das Sechseck ist ein
+     REGELMAESSIGES Sechseck, das Dreieck gleichseitig), satte Fuellfarbe
+     und eine kraeftige weisse Kontur -> gestochen scharf statt verwaschen.
+     Alle Koordinaten leben in einer 100x100-viewBox und skalieren mit.
 
-  // Wuerfelt einen neuen Auftrag passend zur aktiven Lern-Phase.
+     Die 3D-Formen (Wuerfel, Pyramide) bestehen aus einzelnen Flaechen-Divs,
+     die CSS per rotate/translateZ im Raum anordnet und dauerhaft um zwei
+     Achsen dreht (style.css) – so erkennt man den Koerper von allen Seiten. */
+
+  const SVG_PFADE = {
+    kreis:    '<circle cx="50" cy="50" r="41"/>',
+    quadrat:  '<rect x="11" y="11" width="78" height="78" rx="10"/>',
+    // gleichseitig: Breite 86, Hoehe 86 x 0.866 = 74.5
+    dreieck:  '<polygon points="50,8 93,82.5 7,82.5"/>',
+    raute:    '<polygon points="50,4 91,50 50,96 9,50"/>',
+    // regelmaessig (flache Oberseite): Umkreis-Radius 43 um (50,50)
+    sechseck: '<polygon points="93,50 71.5,87.2 28.5,87.2 7,50 28.5,12.8 71.5,12.8"/>',
+    // 5-zackiger Stern: Aussenradius 48, Innenradius 20 um (50,54)
+    stern:    '<polygon points="50,6 61.8,37.8 95.6,39.2 69,60.2 78.2,92.8 ' +
+              '50,74 21.8,92.8 31,60.2 4.4,39.2 38.2,37.8"/>'
+  };
+
+  // Baut das Innen-Markup einer Form. farbe=null -> neutrales Hellblau
+  // (fuer das Auftrags-Symbol in Phase 1/3, wo die Farbe egal ist).
+  // groessePx braucht nur 3D (Kantenlaenge fuer translateZ via --s).
+  function formHTML(form, farbe, groessePx) {
+    if (FORMEN[form].dreiD) {
+      const farbKlasse = farbe ? "farbe-" + farbe : "farbe-neutral";
+      const flaechen = form === "wuerfel"
+        ? '<div class="w-vorn"></div><div class="w-hinten"></div>' +
+          '<div class="w-rechts"></div><div class="w-links"></div>' +
+          '<div class="w-oben"></div><div class="w-unten"></div>'
+        : '<div class="p-f p-1"></div><div class="p-f p-2"></div>' +
+          '<div class="p-f p-3"></div><div class="p-f p-4"></div>' +
+          '<div class="p-boden"></div>';
+      return '<div class="obj3d ' + form + " " + farbKlasse +
+             '" style="--s:' + groessePx + 'px">' + flaechen + "</div>";
+    }
+    const fuellung = farbe ? "var(--form-" + farbe + ")" : "#e4ebff";
+    return '<svg class="form-svg" viewBox="0 0 100 100" aria-hidden="true">' +
+           '<g fill="' + fuellung + '" stroke="rgba(255,255,255,0.9)" ' +
+           'stroke-width="5" stroke-linejoin="round">' +
+           SVG_PFADE[form] + "</g></svg>";
+  }
+
+
+  /* 6. AUFTRAG (MISSION) WUERFELN + ANZEIGEN + VORLESEN ---------------------- */
+
+  // Wuerfelt einen neuen Auftrag passend zu Lern-Phase und Formen-Vorrat.
   // Damit es nie langweilig wird, unterscheidet sich der neue Auftrag
   // immer vom vorherigen (andere Form oder andere Farbe).
   function auftragWuerfeln() {
     const phase = aktuellePhase();
+    const pool = aktiverFormenPool();
     const alter = state.auftrag;
     let neuer = null;
 
     do {
       neuer = {
         phase: phase,
-        form: zufallAus(FORM_NAMEN),
+        form: zufallAus(pool),
         // Farbe spielt nur in Phase 2 eine Rolle
         farbe: phase === 2 ? zufallAus(FARB_NAMEN) : null
       };
@@ -219,10 +338,22 @@
 
     state.auftrag = neuer;
     auftragAnzeigen();
+    auftragSprechen();
   }
 
-  // Schreibt den Auftrag gross in die Bordcomputer-Konsole.
-  // Wichtige Woerter bekommen eigene <b>-Spans mit Farbe (style.css).
+  // Der Auftrag als schlichter Sprech-Text (fuer die Sprachausgabe).
+  function auftragAlsText() {
+    const a = state.auftrag;
+    const formWort = FORMEN[a.form].mehrzahl;
+    if (a.phase === 1) return "Sammle alle " + formWort + "!";
+    if (a.phase === 2) {
+      return "Fange " + FARBEN[a.farbe].adjektiv + " " + formWort + "!";
+    }
+    return "Sammle alles, aber keine " + formWort + "!";
+  }
+
+  // Schreibt den Auftrag gross in die Bordcomputer-Konsole – und zeigt
+  // links daneben die gesuchte Form als Symbol (fuer Nicht-Leser!).
   // Sicherheit: alle Texte stammen aus den festen Tabellen oben, nie von
   // Nutzereingaben – innerHTML ist hier deshalb unbedenklich.
   function auftragAnzeigen() {
@@ -237,11 +368,13 @@
       html = 'Fange <b class="farbe-' + a.farbe + '">' + farbWort +
              '</b> <b class="wort-form">' + formWort + "</b>!";
     } else {
-      html = 'Sammle alles, <b class="wort-nicht">ABER KEINE</b> ' +
+      html = 'Alles, <b class="wort-nicht">ABER KEINE</b> ' +
              '<b class="wort-form">' + formWort + "</b>!";
     }
 
     el.auftragText.innerHTML = html;
+    el.auftragSymbol.innerHTML = formHTML(a.form, a.farbe, 44);
+    el.auftragSymbol.classList.toggle("verboten", a.phase === 3);
     el.konsoleLabel.textContent = "🛰️ BORDCOMPUTER · LEVEL " + state.level;
 
     // Konsole huepft kurz, damit der Blick zum neuen Auftrag wandert
@@ -260,20 +393,21 @@
   }
 
 
-  /* 6. FORMEN ERZEUGEN (SPAWNEN) --------------------------------------------- */
+  /* 7. FORMEN & EXTRAS ERZEUGEN (SPAWNEN) --------------------------------------- */
 
   // Erzeugt eine neue fallende Form am oberen Spielfeldrand.
-  // Mit TREFFER_QUOTE Wahrscheinlichkeit passt sie zum Auftrag, sonst ist
+  // Mit trefferQuote Wahrscheinlichkeit passt sie zum Auftrag, sonst ist
   // sie ein "Ablenker" – so gibt es immer genug zu fangen UND zu denken.
   function formErzeugen() {
     const a = state.auftrag;
-    const sollTreffer = Math.random() < TREFFER_QUOTE;
+    const pool = aktiverFormenPool();
+    const sollTreffer = Math.random() < stufe().trefferQuote;
     let form, farbe;
 
     if (a.phase === 3) {
       // Umkehr-Phase: "Treffer" = jede erlaubte Form, "Ablenker" = die
       // verbotene Form (die darf NICHT gefangen werden).
-      const erlaubte = FORM_NAMEN.filter((f) => f !== a.form);
+      const erlaubte = pool.filter((f) => f !== a.form);
       form = sollTreffer ? zufallAus(erlaubte) : a.form;
       farbe = zufallAus(FARB_NAMEN);
     } else if (sollTreffer) {
@@ -282,33 +416,35 @@
     } else {
       // Ablenker wuerfeln, bis er NICHT zum Auftrag passt
       do {
-        form = zufallAus(FORM_NAMEN);
+        form = zufallAus(pool);
         farbe = zufallAus(FARB_NAMEN);
       } while (passtZumAuftrag({ form: form, farbe: farbe }));
     }
 
-    // Das DOM-Element bauen: aeusseres Div (Position + Glow) mit innerem
-    // Div (Silhouette per clip-path) – siehe Erklaerung in style.css.
-    const groesse = Math.round(zufallZwischen(FORM_MIN, FORM_MAX));
+    // Das DOM-Element bauen: aeusseres Div (Position + Schatten), innen
+    // SVG-Silhouette oder rotierender 3D-Koerper (siehe Baukasten oben).
+    // Die Groessen streuen kraeftig (formMin..formMax je nach Stufe) –
+    // das trainiert nebenbei: ein KLEINES Dreieck ist auch ein Dreieck.
+    const s = stufe();
+    const groesse = Math.round(zufallZwischen(s.formMin, s.formMax));
     const div = document.createElement("div");
-    div.className = "form form-" + form + " farbe-" + farbe;
+    div.className = "form" + (FORMEN[form].dreiD ? " form-3d" : "");
     div.style.width = groesse + "px";
     div.style.height = groesse + "px";
-    div.innerHTML = '<div class="form-innen"></div>';
+    div.innerHTML = formHTML(form, farbe, groesse);
     el.spielfeld.appendChild(div);
 
     // Fallgeschwindigkeit in Pixel/Sekunde: Feldhoehe / Falldauer,
-    // skaliert mit Tempo-Einstellung und Level. Leichte Zufalls-Streuung
-    // (±10 %), damit die Formen nicht im Gleichschritt fallen.
-    const tempo = TEMPO_CONFIG[state.einstellungen.tempo];
+    // skaliert mit Stufe und Level. Leichte Zufalls-Streuung (±10 %),
+    // damit die Formen nicht im Gleichschritt fallen.
     const geschwindigkeit =
-      (state.feldHoehe / (tempo.fallDauer * levelFaktor())) *
-      zufallZwischen(0.9, 1.1);
+      (state.feldHoehe / aktuelleFallDauer()) * zufallZwischen(0.9, 1.1);
 
     state.formen.push({
       el: div,
       form: form,
       farbe: farbe,
+      bonus: false,
       groesse: groesse,
       x: zufallZwischen(groesse / 2, state.feldBreite - groesse / 2), // Mitte
       y: -groesse,                                    // startet oberhalb
@@ -317,13 +453,43 @@
     });
   }
 
-  // Sekunden zwischen zwei Spawns (wird mit dem Level kuerzer).
+  // Erzeugt ein goldenes Bonus-Extra (Energiekapsel / Treibstofftank).
+  // Extras zaehlen NICHT zum Auftrag – einsammeln gibt immer +25.
+  function bonusErzeugen() {
+    const art = zufallAus(BONUS_ARTEN);
+    const groesse = 54;
+    const div = document.createElement("div");
+    div.className = "form bonus";
+    div.style.width = groesse + "px";
+    div.style.height = groesse + "px";
+    div.innerHTML = '<div class="bonus-kapsel" style="font-size:' +
+                    Math.round(groesse * 0.55) + 'px">' + art.emoji + "</div>";
+    el.spielfeld.appendChild(div);
+
+    state.formen.push({
+      el: div,
+      form: art.art,
+      farbe: null,
+      bonus: true,
+      groesse: groesse,
+      x: zufallZwischen(groesse / 2, state.feldBreite - groesse / 2),
+      y: -groesse,
+      tempo: (state.feldHoehe / aktuelleFallDauer()) * 0.9,  // etwas gemuetlicher
+      erledigt: false
+    });
+  }
+
+  // Sekunden zwischen zwei Spawns: Grundwert der Stufe, wird pro Level
+  // deutlich kuerzer (DICHTE steigt staerker als das Falltempo) – und die
+  // ersten Level bekommen einen Extra-Aufschlag, damit der Einstieg mit
+  // ganz WENIGEN Formen beginnt.
   function spawnAbstand() {
-    return TEMPO_CONFIG[state.einstellungen.tempo].spawnAbstand * levelFaktor();
+    const fruehBonus = 1 + Math.max(0, 3 - state.level) * 0.25;  // L1 +50 %, L2 +25 %
+    return stufe().spawnAbstand * Math.pow(levelFaktor(), 1.5) * fruehBonus;
   }
 
 
-  /* 7. DIE GAME-LOOP (requestAnimationFrame) ---------------------------------
+  /* 8. DIE GAME-LOOP (requestAnimationFrame) ---------------------------------
      Das Spiel laeuft in einer Endlos-Schleife, die der Browser selbst taktet:
      requestAnimationFrame ruft unsere Funktion VOR JEDEM BILDAUFBAU auf
      (meist 60x pro Sekunde, auf schnellen Displays auch 120x).
@@ -349,22 +515,38 @@
     // Zeitmessung weiterfuehren, aber nichts bewegen.
     if (state.pausiert) return;
 
-    /* --- a) Nachschub: alle spawnAbstand() Sekunden eine neue Form --- */
+    /* --- a) Nachschub: alle spawnAbstand() Sekunden eine neue Form ---
+       Waehrend der Atempause steht spawnUhr im Minus und muss sich erst
+       wieder zu 0 hocharbeiten -> es kommen kurz KEINE neuen Formen.     */
     state.spawnUhr += dt;
     if (state.spawnUhr >= spawnAbstand()) {
       state.spawnUhr = 0;
       formErzeugen();
     }
 
+    /* --- a2) Bonus-Extras auf eigener, gemuetlicher Uhr --- */
+    if (state.spawnUhr >= 0) {           // in der Atempause auch keine Extras
+      state.bonusUhr += dt;
+      if (state.bonusUhr >= state.naechsterBonus) {
+        state.bonusUhr = 0;
+        state.naechsterBonus = zufallZwischen(12, 20);
+        bonusErzeugen();
+      }
+    }
+
     /* --- b) Gleiter weich zum Finger-Ziel gleiten lassen ---
        Statt hart zu springen, naehert sich der Gleiter dem Ziel jeden Frame
        um einen Anteil der Reststrecke (exponentielles Glaetten). Das macht
        die Steuerung geschmeidig, ohne traege zu wirken.                    */
+    const vorherX = state.gleiterX;
     state.gleiterX += (state.zielX - state.gleiterX) * Math.min(1, dt * 16);
     el.gleiter.style.transform =
       "translateX(" + (state.gleiterX - GLEITER_BREITE / 2) + "px)";
 
-    /* --- c) Formen bewegen, Kollision pruefen, Aufraeumen --- */
+    /* --- c) Sternenfeld weiterfliegen lassen (mit Lenk-Parallaxe) --- */
+    sterneMalen(dt, state.gleiterX - vorherX);
+
+    /* --- d) Formen bewegen, Kollision pruefen, Aufraeumen --- */
     for (let i = state.formen.length - 1; i >= 0; i--) {
       const f = state.formen[i];
       if (f.erledigt) continue;
@@ -390,7 +572,72 @@
   }
 
 
-  /* 8. KOLLISIONSABFRAGE (COLLISION DETECTION) --------------------------------
+  /* 9. STERNENFELD (Canvas, echte Tiefe) ---------------------------------------
+     Statt einer flachen, mitwandernden Textur: ~140 einzelne Sterne, jeder
+     mit eigener Tiefe z (0 = ganz fern, 1 = ganz nah).
+       - Fallgeschwindigkeit ~ z^3  -> nahe Sterne rasen, ferne kriechen
+       - Groesse + Helligkeit ~ z   -> nahe Sterne gross und hell
+       - Beim Lenken driften die Sterne ENTGEGEN der Schiffsbewegung,
+         nahe staerker als ferne -> raeumliche Parallaxe wie im Cockpit.
+     Die Grundgeschwindigkeit haengt an aktuelleFallDauer(): steigt das
+     Level (oder die Schwierigkeitsstufe), fliegt das Schiff spuerbar
+     schneller durchs All.                                                  */
+
+  const STERN_ANZAHL = 140;
+  const STERN_FARBEN = ["#ffffff", "#ffffff", "#dfe8ff", "#cdd9ff", "#ffe9c9"];
+  const sterne = [];
+  let sternCtx = null;
+  const bewegungReduziert =
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function sterneEinrichten() {
+    sternCtx = el.weltraum.getContext("2d");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    el.weltraum.width  = Math.round(window.innerWidth * dpr);
+    el.weltraum.height = Math.round(window.innerHeight * dpr);
+    sternCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (sterne.length === 0) {
+      for (let i = 0; i < STERN_ANZAHL; i++) {
+        sterne.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          z: 0.15 + Math.random() * 0.85,          // Tiefe: fern .. nah
+          farbe: zufallAus(STERN_FARBEN)
+        });
+      }
+    }
+    sterneMalen(0, 0);      // sofort einmal zeichnen (auch vor dem 1. Frame)
+  }
+
+  function sterneMalen(dt, schiffDelta) {
+    if (!sternCtx) return;
+    const b = window.innerWidth;
+    const h = window.innerHeight;
+    // Grundtempo = Falltempo der Formen; nahe Sterne fliegen schneller
+    // vorbei als die Formen (staerkeres Tiefen-Gefuehl).
+    const basis = (state.feldHoehe || h) / aktuelleFallDauer();
+
+    sternCtx.clearRect(0, 0, b, h);
+    for (const s of sterne) {
+      if (!bewegungReduziert) {
+        s.y += basis * (0.10 + 1.15 * s.z * s.z * s.z) * dt;
+        s.x -= schiffDelta * s.z * 0.35;           // Lenk-Parallaxe
+        if (s.y > h + 3) { s.y = -3; s.x = Math.random() * b; }
+        if (s.x < -4) s.x += b + 8;
+        else if (s.x > b + 4) s.x -= b + 8;
+      }
+      sternCtx.globalAlpha = 0.25 + s.z * 0.7;
+      sternCtx.fillStyle = s.farbe;
+      sternCtx.beginPath();
+      sternCtx.arc(s.x, s.y, 0.5 + s.z * 1.9, 0, 6.2832);
+      sternCtx.fill();
+    }
+    sternCtx.globalAlpha = 1;
+  }
+
+
+  /* 10. KOLLISIONSABFRAGE (COLLISION DETECTION) --------------------------------
      Klassischer Rechteck-Test (AABB = "axis-aligned bounding box"):
      Zwei Rechtecke ueberlappen sich genau dann, wenn sie sich SOWOHL in
      der Breite ALS AUCH in der Hoehe ueberschneiden. Wir pruefen deshalb
@@ -427,14 +674,19 @@
   }
 
 
-  /* 9. FEEDBACK: RICHTIG / FALSCH / LEVEL-UP ---------------------------------- */
+  /* 11. FEEDBACK: RICHTIG / FALSCH / BONUS / LEVEL-UP --------------------------- */
 
-  // Eine Form wurde vom Gleiter beruehrt.
+  // Eine Form (oder ein Extra) wurde vom Gleiter beruehrt.
   function formGefangen(f) {
     f.erledigt = true;
     state.formen.splice(state.formen.indexOf(f), 1);
 
-    if (passtZumAuftrag(f)) {
+    if (f.bonus) {
+      /* BONUS-EXTRA: immer gut! +25, Funkel-Sound. */
+      f.el.classList.add("gefangen");
+      punkteAendern(+PUNKTE_BONUS, f.x, f.y, "bonus");
+      tonBonus();
+    } else if (passtZumAuftrag(f)) {
       /* RICHTIG: Form poppt leuchtend auf, +10 Punkte, Fortschritt hoch */
       f.el.classList.add("gefangen");
       punkteAendern(+PUNKTE_RICHTIG, f.x, f.y);
@@ -445,18 +697,16 @@
         levelAufstieg();
       }
     } else {
-      /* FALSCH: sanftes Feedback – Schiff wackelt, Rand blinkt rot,
-         −5 Punkte (nie unter 0). Der Spielfluss laeuft einfach weiter. */
+      /* FALSCH: ruhiges, klares Feedback – kurzer Brumm-Sound, eine kleine
+         Flamme ploppt am Schiff auf, der Rand blinkt rot, −5 Punkte.
+         (Bewusst KEIN wildes Hin- und Herwackeln des Schiffs.) */
       f.el.classList.add("daneben");
       punkteAendern(-PUNKTE_FALSCH, f.x, f.y);
       tonFalsch();
-
-      el.gleiter.classList.remove("wackelt");
-      void el.gleiter.offsetWidth;             // Animation neu starten
-      el.gleiter.classList.add("wackelt");
+      flammeZeigen();
 
       el.fehlerBlitz.classList.remove("an");
-      void el.fehlerBlitz.offsetWidth;
+      void el.fehlerBlitz.offsetWidth;             // Animation neu starten
       el.fehlerBlitz.classList.add("an");
     }
 
@@ -467,8 +717,20 @@
     fortschrittAnzeigen();
   }
 
-  // Punkte gutschreiben/abziehen + schwebende "+10"/"−5"-Zahl anzeigen.
-  function punkteAendern(delta, x, y) {
+  // Kleine Flamme am Schiff (Fehlgriff-Feedback statt Wackeln).
+  function flammeZeigen() {
+    const fl = document.createElement("div");
+    fl.className = "fehl-flamme";
+    fl.textContent = "🔥";
+    fl.style.left = state.gleiterX + "px";
+    fl.style.top =
+      (state.feldHoehe - GLEITER_BODEN - GLEITER_HOEHE - 8) + "px";
+    el.spielfeld.appendChild(fl);
+    setTimeout(() => fl.remove(), 700);
+  }
+
+  // Punkte gutschreiben/abziehen + schwebende "+10"/"−5"/"+25"-Zahl anzeigen.
+  function punkteAendern(delta, x, y, extraKlasse) {
     state.punkte = Math.max(0, state.punkte + delta);
 
     // Rekord live mitfuehren
@@ -486,7 +748,8 @@
 
     // Schwebende Punktzahl an der Fangstelle
     const flug = document.createElement("div");
-    flug.className = "punkte-flug " + (delta > 0 ? "plus" : "minus");
+    flug.className = "punkte-flug " +
+      (extraKlasse || (delta > 0 ? "plus" : "minus"));
     flug.textContent = (delta > 0 ? "+" : "−") + Math.abs(delta);
     flug.style.left = begrenzen(x - 20, 4, state.feldBreite - 44) + "px";
     flug.style.top = (y - 30) + "px";
@@ -500,18 +763,30 @@
     el.fortschritt.style.width = anteil + "%";
   }
 
-  // Level geschafft: Feier + neuer Auftrag + minimal hoeheres Tempo.
+  // Level geschafft! Ablauf mit ATEMPAUSE:
+  //   1. sofort: Konfetti + Fanfare + Lob per Sprachausgabe
+  //   2. der Spawner pausiert (spawnUhr negativ) -> Bildschirm leert sich
+  //   3. nach kurzer Verschnaufpause erscheint der neue Auftrag (Anzeige +
+  //      Vorlesen), dann rollt der Nachschub wieder an.
   function levelAufstieg() {
     state.level += 1;
     state.richtigeImLevel = 0;
-    auftragWuerfeln();       // zeigt auch Label/Level neu an
+    state.spawnUhr = -ATEMPAUSE_SEK;             // Atempause: nichts spawnt
     konfettiRegnen();
     tonLevelUp();
     speichern();
 
-    // Sternen-Scrolling passend zum Level leicht beschleunigen (CSS-Variable)
-    const dauer = Math.max(4, 10 * levelFaktor());
-    document.documentElement.style.setProperty("--sterne-dauer", dauer + "s");
+    el.konsoleLabel.textContent = "🛰️ BORDCOMPUTER · LEVEL " + state.level;
+    el.auftragText.innerHTML = "🎉 Super! Kurz durchatmen …";
+    el.auftragSymbol.innerHTML = "";
+    el.auftragSymbol.classList.remove("verboten");
+    sprechen("Super! Level " + state.level + "!");
+
+    const runde = state.runde;
+    setTimeout(() => {
+      // Falls inzwischen neu gestartet wurde, keinen alten Auftrag wuerfeln
+      if (state.runde === runde) auftragWuerfeln();
+    }, AUFTRAG_VERZOEGERUNG_MS);
   }
 
   // Kleine Konfetti-Feier in den vier Formen-Farben.
@@ -529,50 +804,60 @@
   }
 
 
-  /* 10. TOUCH-STEUERUNG (WISCH-DRAG) -------------------------------------------
+  /* 12. TOUCH-STEUERUNG (WISCH-DRAG) -------------------------------------------
      Gesteuert wird mit POINTER-EVENTS: die fassen Touch, Maus und Stift in
-     einer API zusammen – ein Handler fuer alles.
+     einer API zusammen – ein Handler fuer alles. Die Handler haengen an
+     ZWEI Bereichen: am Spielfeld selbst UND an der Wischflaeche darunter.
+     So kann das Kind unterhalb des Schiffs wischen (nichts wird verdeckt),
+     aber auch direkt auf dem Spielfeld – beides steuert dasselbe Schiff.
 
      Es ist eine RELATIVE Drag-Steuerung:
        - Beim Aufsetzen des Fingers merken wir uns nur dessen X-Position.
        - Bei jeder Bewegung schieben wir das ZIEL des Gleiters um genauso
          viele Pixel weiter, wie der Finger seit dem letzten Event wanderte.
-       - Der Gleiter springt also NICHT unter den Finger! Das Kind kann
-         bequem im unteren Bildschirmbereich wischen und verdeckt das
-         Schiff dabei nie mit der eigenen Hand.
+       - Der Gleiter springt also NICHT unter den Finger!
      Der Faktor 1.15 uebersetzt Fingerweg leicht verstaerkt in Schiffsweg,
      dann erreicht man beide Raender, ohne umgreifen zu muessen.
 
      Wichtig fuer fluessiges Wischen (sonst scrollt/zoomt der Browser):
-       - CSS  : .spielfeld { touch-action: none; }
+       - CSS  : .spielfeld, .wisch-zone { touch-action: none; }
        - HTML : <meta viewport ... user-scalable=no>                        */
 
   let fingerAktiv = false;
   let fingerLetztesX = 0;
+  let ersterTipp = true;
 
   function steuerungEinrichten() {
-    el.spielfeld.addEventListener("pointerdown", (e) => {
-      fingerAktiv = true;
-      fingerLetztesX = e.clientX;
-      // Auch wenn der Finger kurz das Feld verlaesst: Events weiter an uns
-      el.spielfeld.setPointerCapture(e.pointerId);
-      audioAufwecken();      // Browser erlauben Ton erst nach einer Geste
-    });
+    [el.spielfeld, el.wischZone].forEach((zone) => {
+      zone.addEventListener("pointerdown", (e) => {
+        fingerAktiv = true;
+        fingerLetztesX = e.clientX;
+        // Auch wenn der Finger die Zone kurz verlaesst: Events weiter an uns
+        zone.setPointerCapture(e.pointerId);
+        audioAufwecken();      // Browser erlauben Ton erst nach einer Geste
+        if (ersterTipp) {
+          // Sprachausgabe darf ebenfalls erst nach einer Geste starten –
+          // deshalb wird der allererste Auftrag jetzt (nach)gesprochen.
+          ersterTipp = false;
+          auftragSprechen();
+        }
+      });
 
-    el.spielfeld.addEventListener("pointermove", (e) => {
-      if (!fingerAktiv) return;
-      const delta = e.clientX - fingerLetztesX;   // Fingerweg seit letztem Event
-      fingerLetztesX = e.clientX;
-      state.zielX = begrenzen(
-        state.zielX + delta * 1.15,
-        GLEITER_BREITE / 2,
-        state.feldBreite - GLEITER_BREITE / 2
-      );
-    });
+      zone.addEventListener("pointermove", (e) => {
+        if (!fingerAktiv) return;
+        const delta = e.clientX - fingerLetztesX;  // Fingerweg seit letztem Event
+        fingerLetztesX = e.clientX;
+        state.zielX = begrenzen(
+          state.zielX + delta * 1.15,
+          GLEITER_BREITE / 2,
+          state.feldBreite - GLEITER_BREITE / 2
+        );
+      });
 
-    const loslassen = () => { fingerAktiv = false; };
-    el.spielfeld.addEventListener("pointerup", loslassen);
-    el.spielfeld.addEventListener("pointercancel", loslassen);
+      const loslassen = () => { fingerAktiv = false; };
+      zone.addEventListener("pointerup", loslassen);
+      zone.addEventListener("pointercancel", loslassen);
+    });
 
     // Bonus fuer Desktop-Tests: Pfeiltasten steuern ebenfalls.
     document.addEventListener("keydown", (e) => {
@@ -587,7 +872,7 @@
   }
 
 
-  /* 11. SOUNDEFFEKTE (Web Audio API, programmatisch – keine Audiodateien) ----- */
+  /* 13. SOUND (Web Audio) + SPRACHAUSGABE (Speech Synthesis) ------------------- */
 
   let audioCtx = null;
 
@@ -625,6 +910,11 @@
     ton(200, 0, 0.16, "square", 0.10);
     ton(150, 0.10, 0.18, "square", 0.08);
   }
+  function tonBonus() {    // glitzerndes Aufwaerts-Arpeggio fuer Extras
+    ton(784,  0,    0.10, "triangle", 0.22);
+    ton(988,  0.07, 0.10, "triangle", 0.22);
+    ton(1319, 0.14, 0.22, "triangle", 0.24);
+  }
   function tonLevelUp() {  // kleine Fanfare
     ton(523, 0,    0.14, "triangle", 0.25);
     ton(659, 0.12, 0.14, "triangle", 0.25);
@@ -632,8 +922,40 @@
     ton(1047, 0.36, 0.30, "triangle", 0.28);
   }
 
+  // --- Sprachausgabe (Web Speech API): der Bordcomputer liest Auftraege
+  //     vor – wichtig fuer Kinder, die noch nicht (fluessig) lesen. -------
+  let deutscheStimme = null;
 
-  /* 12. SPEICHERN (localStorage) ------------------------------------------------
+  function stimmeWaehlen() {
+    if (!window.speechSynthesis) return;
+    const stimmen = window.speechSynthesis.getVoices();
+    deutscheStimme =
+      stimmen.find((v) => v.lang === "de-DE") ||
+      stimmen.find((v) => v.lang && v.lang.indexOf("de") === 0) || null;
+  }
+
+  // anhaengen=true reiht den Text hinter laufende Ausgaben (z. B. erst
+  // "Super! Level 4!", dann der neue Auftrag) statt sie abzubrechen.
+  function sprechen(text, anhaengen) {
+    if (state.einstellungen.sprache !== "an") return;
+    if (!window.speechSynthesis) return;
+    try {
+      if (!anhaengen) window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "de-DE";
+      if (deutscheStimme) u.voice = deutscheStimme;
+      u.rate = 0.95;       // einen Hauch langsamer = besser verstaendlich
+      u.pitch = 1.05;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* Sprachausgabe nicht verfuegbar – Anzeige reicht */ }
+  }
+
+  function auftragSprechen() {
+    if (state.auftrag) sprechen(auftragAlsText(), true);
+  }
+
+
+  /* 14. SPEICHERN (localStorage) ------------------------------------------------
      Gespeichert werden Rekord und Einstellungen (Punkte/Level starten bei
      jedem Besuch frisch – kurze Runden passen besser zu kurzen Pausen). */
 
@@ -654,30 +976,43 @@
       if (typeof daten.rekord === "number") state.rekord = daten.rekord;
       if (daten.einstellungen) {
         Object.assign(state.einstellungen, daten.einstellungen);
+        // Migration: die fruehere "tempo"-Einstellung heisst jetzt "stufe"
+        const alteTempi = { ruhig: "leicht", normal: "mittel", flott: "schwer" };
+        if (daten.einstellungen.tempo && !daten.einstellungen.stufe) {
+          state.einstellungen.stufe =
+            alteTempi[daten.einstellungen.tempo] || "mittel";
+        }
+        delete state.einstellungen.tempo;
+        if (!STUFEN[state.einstellungen.stufe]) {
+          state.einstellungen.stufe = "mittel";
+        }
       }
     } catch (e) { /* kaputte/fremde Daten ignorieren */ }
   }
 
 
-  /* 13. PAUSE, NEUSTART, EINSTELLUNGEN, POPOVER ---------------------------------- */
+  /* 15. PAUSE, NEUSTART, EINSTELLUNGEN, POPOVER ---------------------------------- */
 
   function pauseSetzen(an) {
     state.pausiert = an;
     el.pauseOverlay.hidden = !an;
-    el.buttonPause.textContent = an ? "▶️ Weiter" : "⏸️ Pause";
+    el.buttonPause.textContent = an ? "▶️" : "⏸️";
+    el.buttonPause.setAttribute("aria-label", an ? "Weiter" : "Pause");
   }
   function pauseUmschalten() { pauseSetzen(!state.pausiert); }
 
   // Neustart: Punkte/Level auf Anfang, Spielfeld leeren, neuer Auftrag.
   function neustart() {
+    state.runde += 1;
     state.punkte = 0;
     state.level = 1;
     state.richtigeImLevel = 0;
     state.spawnUhr = 0;
+    state.bonusUhr = 0;
+    state.naechsterBonus = zufallZwischen(12, 20);
     state.formen.forEach((f) => f.el.remove());
     state.formen = [];
     el.punkte.textContent = "0";
-    document.documentElement.style.setProperty("--sterne-dauer", "10s");
     fortschrittAnzeigen();
     auftragWuerfeln();
     pauseSetzen(false);
@@ -725,8 +1060,13 @@
         state.einstellungen[setting] = karte.dataset.wert;
         menueKartenMarkieren();
         speichern();
-        // Ein Phasen-Wechsel soll sofort sichtbar werden -> neuer Auftrag
-        if (setting === "phase") auftragWuerfeln();
+        // Phase/Stufe bestimmen Auftrag + Formen-Vorrat -> sofort neu wuerfeln
+        if (setting === "phase" || setting === "stufe") auftragWuerfeln();
+        // Sprachausgabe abgeschaltet? Laufende Ansage sofort stoppen.
+        if (setting === "sprache" && karte.dataset.wert === "aus" &&
+            window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
       });
     });
 
@@ -763,7 +1103,8 @@
     });
     el.statPunkte.addEventListener("click", () => {
       popoverZeigen(el.statPunkte,
-        "⭐ Deine Punkte: richtige Form +10, falsche Form −5.");
+        "⭐ Deine Punkte: richtige Form +10, falsche Form −5, " +
+        "Bonus-Extra (⚡/⛽) +25.");
     });
     el.statRekord.addEventListener("click", () => {
       popoverZeigen(el.statRekord,
@@ -778,15 +1119,23 @@
   }
 
 
-  /* 14. START ---------------------------------------------------------------- */
+  /* 16. START ---------------------------------------------------------------- */
 
   function start() {
     laden();
     el.rekord.textContent = state.rekord;
 
     feldVermessen();
+    sterneEinrichten();
     state.gleiterX = state.feldBreite / 2;   // Schiff startet in der Mitte
     state.zielX = state.gleiterX;
+    state.naechsterBonus = zufallZwischen(12, 20);
+
+    // Stimmen laden Browser oft erst asynchron nach
+    stimmeWaehlen();
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = stimmeWaehlen;
+    }
 
     auftragWuerfeln();
     fortschrittAnzeigen();
@@ -798,8 +1147,11 @@
     el.buttonWeiter.addEventListener("click", () => pauseSetzen(false));
     el.buttonNeustart.addEventListener("click", neustart);
 
-    // Bildschirm gedreht oder Fenster veraendert? Feld neu vermessen.
-    window.addEventListener("resize", feldVermessen);
+    // Bildschirm gedreht oder Fenster veraendert? Feld + Sterne neu vermessen.
+    window.addEventListener("resize", () => {
+      feldVermessen();
+      sterneEinrichten();
+    });
 
     // Tab in den Hintergrund? Automatisch pausieren (fair + spart Akku).
     document.addEventListener("visibilitychange", () => {

@@ -10,15 +10,24 @@
   gleiche flache Dateistruktur wie beim Schwester-Spiel "Uhrzeit-Uhu".
 
   SPIELIDEE
-    Von oben fallen bunte CSS-Formen (Kreis, Quadrat, Dreieck, Raute,
-    Sechseck). Der Bordcomputer gibt einen Auftrag ("Sammle alle DREIECKE!").
-    Das Kind steuert den Geo-Gleiter (🚀) per Finger-Wischen nach links und
-    rechts und faengt nur die richtigen Formen.
+    Von oben fallen bunte Formen (Kreis, Quadrat, Dreieck, Raute, Sechseck,
+    Stern – und spaeter echte 3D-Objekte wie Wuerfel und Pyramide, die sich
+    im Raum drehen). Der Bordcomputer gibt einen Auftrag ("Sammle alle
+    DREIECKE!") – auf Wunsch auch per SPRACHAUSGABE fuer Kinder, die noch
+    nicht lesen koennen. Das Kind steuert den Geo-Gleiter (🚀) per Wischen
+    auf der Wischflaeche unter dem Schiff (oder direkt auf dem Spielfeld)
+    und faengt nur die richtigen Formen. Zwischendurch fallen Extras wie
+    Energiekapseln und Treibstofftanks – die geben immer Bonuspunkte.
 
   LERN-PHASEN (steigen automatisch mit dem Level, Menue ⚙️):
     - Phase 1 (Klasse 1)  : nur die FORM zaehlt ("Sammle Quadrate")
     - Phase 2 (Klasse 1/2): FORM + FARBE ("Fange rote Dreiecke")
     - Phase 3 (Klasse 2/3): UMKEHRLOGIK ("Alles, ABER KEINE Kreise!")
+
+  SCHWIERIGKEIT (Menue ⚙️): drei Stufen (Leicht/Mittel/Schwer) fuer kleine,
+  mittlere und grosse Kinder – sie steuern Tempo, Formen-Dichte, Groessen
+  und ab wann Stern/Wuerfel/Pyramide auftauchen. Innerhalb einer Runde
+  steigt die Schwierigkeit zusaetzlich sanft mit jedem Level.
 
   Hinweis: ?v=NUMMER hinter style.css/game.js erzwingt frische Dateien
   (umgeht Browser-/CDN-Caches). Bei jeder Aenderung die Nummer erhoehen.
@@ -38,25 +47,26 @@
 
   <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=2">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
 
 <body>
 
-  <!-- Weltraum-Hintergrund: zwei Sternen-Ebenen, die per CSS-Animation nach
-       unten scrollen (Parallax = Gefuehl von Vorwaertsflug). Rein dekorativ. -->
-  <div class="weltraum" aria-hidden="true">
-    <div class="sterne sterne-fern"></div>
-    <div class="sterne sterne-nah"></div>
-  </div>
+  <!-- Weltraum-Hintergrund: ein Canvas-Sternenfeld mit ECHTER Tiefe.
+       game.js verteilt ~140 Sterne auf verschiedene Entfernungen (z-Wert):
+       nahe Sterne sind gross/hell/schnell, ferne klein/blass/langsam, und
+       beim Lenken driften sie unterschiedlich stark zur Seite – so entsteht
+       ein raeumlicher 3D-Flugeffekt statt einer starren Textur. -->
+  <canvas class="weltraum" id="weltraum" aria-hidden="true"></canvas>
 
   <!-- Roter Bildschirmrand-Blitz bei falsch gefangener Form (sanftes Feedback). -->
   <div class="fehler-blitz" id="fehler-blitz" aria-hidden="true"></div>
 
 
-  <!-- 1) TOP-BAR: Marke links, Punkte/Rekord mittig, Zahnrad-Menue rechts
-       (gleicher Aufbau wie beim Uhrzeit-Uhu, damit man den Hersteller erkennt). -->
+  <!-- 1) TOP-BAR: Marke links, Punkte/Rekord mittig, Pause/Neustart/Zahnrad
+       rechts. Pause + Neustart sitzen BEWUSST OBEN: unten wird gewischt,
+       dort wuerde man sie beim Spielen staendig versehentlich treffen. -->
   <header class="top-bar">
     <!-- Klick auf die Marke zeigt Spielname + Studio -->
     <button type="button" class="marke" id="button-about" aria-label="Über das Spiel">
@@ -76,19 +86,27 @@
         <span class="stat-wert" id="anzeige-rekord">0</span>
       </button>
     </div>
-    <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
-      <span class="menue-icon" aria-hidden="true">⚙️</span>
-    </button>
+    <div class="aktionen">
+      <button type="button" class="aktion-button" id="button-pause" aria-label="Pause">⏸️</button>
+      <button type="button" class="aktion-button" id="button-neustart" aria-label="Neustart">🔄</button>
+      <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
+        <span class="menue-icon" aria-hidden="true">⚙️</span>
+      </button>
+    </div>
   </header>
 
 
   <!-- 2) AUFTRAGSKONSOLE: der "Bordcomputer" nennt den aktuellen Suchauftrag.
-       Wichtige Woerter (Form/Farbe) werden von game.js farbig hervorgehoben.
-       Der schmale Balken darunter zeigt den Fortschritt bis zum naechsten
-       Level (alle 10 richtigen Formen gibt es einen neuen Auftrag). -->
+       Links neben dem Text zeigt ein Symbol die gesuchte Form (wichtig fuer
+       Kinder, die noch nicht lesen koennen – zusaetzlich liest game.js den
+       Auftrag per Sprachausgabe vor). Der schmale Balken darunter zeigt den
+       Fortschritt bis zum naechsten Level (alle 10 richtigen Formen). -->
   <section class="konsole" id="konsole" aria-live="polite">
     <span class="konsole-label" id="konsole-label">🛰️ BORDCOMPUTER · LEVEL 1</span>
-    <p class="konsole-text" id="auftrag-text">Startklar machen …</p>
+    <div class="auftrag-zeile">
+      <span class="auftrag-symbol" id="auftrag-symbol" aria-hidden="true"></span>
+      <p class="konsole-text" id="auftrag-text">Startklar machen …</p>
+    </div>
     <div class="konsole-fortschritt" aria-hidden="true">
       <div class="fortschritt-balken" id="fortschritt-balken"></div>
     </div>
@@ -111,11 +129,13 @@
   </main>
 
 
-  <!-- 4) FOOTER: unauffaellige Pause-/Neustart-Buttons. -->
-  <footer class="fuss-leiste">
-    <button type="button" class="fuss-button" id="button-pause">⏸️ Pause</button>
-    <button type="button" class="fuss-button" id="button-neustart">🔄 Neustart</button>
-  </footer>
+  <!-- 4) WISCHFLAECHE: eigener Steuerbereich UNTER dem Raumschiff.
+       Hier kann das Kind bequem hin- und herwischen, ohne das Schiff mit
+       dem eigenen Finger zu verdecken. (Wischen direkt auf dem Spielfeld
+       funktioniert weiterhin genauso – beides steuert das Schiff.) -->
+  <div class="wisch-zone" id="wisch-zone">
+    <span class="wisch-hinweis" aria-hidden="true">◀&ensp;✋ hier wischen&ensp;▶</span>
+  </div>
 
 
   <!-- Konfetti-Ebene fuer die Level-Up-Feier (von game.js befuellt). -->
@@ -157,21 +177,37 @@
           </div>
         </section>
 
-        <!-- Tempo -->
+        <!-- Schwierigkeit: skaliert Tempo, Dichte, Groessen UND ab wann
+             Stern / Wuerfel / Pyramide ins Spiel kommen. -->
         <section class="opt-gruppe">
-          <h3 class="opt-titel">🚀 Tempo</h3>
+          <h3 class="opt-titel">🎯 Schwierigkeit</h3>
           <div class="opt-reihe">
-            <button type="button" class="opt-karte" data-setting="tempo" data-wert="ruhig">
-              <span class="opt-icon">🐢</span><span class="opt-name">Ruhig</span>
-              <span class="opt-text">zum Üben</span>
+            <button type="button" class="opt-karte" data-setting="stufe" data-wert="leicht">
+              <span class="opt-icon">🐣</span><span class="opt-name">Leicht</span>
+              <span class="opt-text">für kleine Kinder: langsam, wenige große Formen</span>
             </button>
-            <button type="button" class="opt-karte" data-setting="tempo" data-wert="normal">
-              <span class="opt-icon">🚀</span><span class="opt-name">Normal</span>
-              <span class="opt-text">genau richtig</span>
+            <button type="button" class="opt-karte" data-setting="stufe" data-wert="mittel">
+              <span class="opt-icon">🚀</span><span class="opt-name">Mittel</span>
+              <span class="opt-text">genau richtig, später mit 3D-Objekten</span>
             </button>
-            <button type="button" class="opt-karte" data-setting="tempo" data-wert="flott">
-              <span class="opt-icon">☄️</span><span class="opt-name">Flott</span>
-              <span class="opt-text">für Profis</span>
+            <button type="button" class="opt-karte" data-setting="stufe" data-wert="schwer">
+              <span class="opt-icon">☄️</span><span class="opt-name">Schwer</span>
+              <span class="opt-text">für Profis: schnell, dicht, Würfel &amp; Pyramide</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Sprachausgabe: der Bordcomputer liest jeden Auftrag vor -->
+        <section class="opt-gruppe">
+          <h3 class="opt-titel">🗣️ Sprachausgabe</h3>
+          <div class="opt-reihe opt-reihe-zwei">
+            <button type="button" class="opt-karte" data-setting="sprache" data-wert="an">
+              <span class="opt-icon">🗣️</span><span class="opt-name">An</span>
+              <span class="opt-text">Aufträge werden vorgelesen</span>
+            </button>
+            <button type="button" class="opt-karte" data-setting="sprache" data-wert="aus">
+              <span class="opt-icon">🤫</span><span class="opt-name">Aus</span>
+              <span class="opt-text">nur Anzeige oben</span>
             </button>
           </div>
         </section>
@@ -204,6 +240,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=1"></script>
+  <script src="game.js?v=2"></script>
 </body>
 </html>

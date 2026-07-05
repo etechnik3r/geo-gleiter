@@ -5,33 +5,56 @@ Grundschulalter: **geometrische Formen und Farben** erkennen und fangen –
 das Schwester-Spiel des [Uhrzeit-Uhu](https://github.com/etechnik3r/uhrzeit-uhu)
 im gleichen Design.
 
-Der **Bordcomputer** gibt einen Auftrag („Sammle alle **DREIECKE**!“), von oben
-fallen bunte Formen durchs Weltall – und das Kind steuert den Geo-Gleiter (🚀)
-mit dem Finger nach links und rechts, um nur die richtigen Formen einzusammeln.
+Der **Bordcomputer** gibt einen Auftrag („Sammle alle **DREIECKE**!“) – als
+Text, als **Form-Symbol** und auf Wunsch per **Sprachausgabe** (auch für
+Kinder, die noch nicht lesen können). Von oben fallen bunte Formen durchs
+Weltall – und das Kind steuert den Geo-Gleiter (🚀) auf der **Wischfläche**
+unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
 
 ## ✨ Eigenschaften
 
 - **Reines Vanilla JavaScript (ES6+)** – keine Frameworks, keine externen
-  Bibliotheken, **keine Bilddateien**: Das Raumschiff ist ein Emoji, die fünf
-  Formen (⚪ Kreis, ⬜ Quadrat, 🔺 Dreieck, 🔷 Raute, ⬡ Sechseck) entstehen rein
-  aus CSS (`border-radius`, `clip-path`) – gestochen scharf und in vier
-  leuchtenden Grundfarben (Rot, Blau, Grün, Gelb).
+  Bibliotheken, **keine Bilddateien**: Das Raumschiff ist ein Emoji, die
+  2D-Formen (⚪ Kreis, ⬜ Quadrat, 🔺 Dreieck, 🔷 Raute, ⬡ Sechseck, ⭐ Stern)
+  sind Inline-SVG mit **exakter Geometrie** (regelmäßiges Sechseck,
+  gleichseitiges Dreieck) und kräftiger weißer Kontur – gestochen scharf,
+  in vier leuchtenden Grundfarben und stark variierenden Größen.
+- **Echte 3D-Objekte:** 🧊 Würfel und 🔺 Pyramide sind CSS-3D-Körper aus
+  einzelnen Flächen, die sich dauerhaft um **zwei Achsen** drehen – man
+  erkennt jederzeit, dass es Körper sind (kein „Dreieck, das Pyramide
+  heißt“). Sie tauchen je nach Schwierigkeit ab bestimmten Leveln auf.
+- **Bonus-Extras:** ⚡ Energiekapseln und ⛽ Treibstofftanks fallen alle
+  paar Sekunden als goldene, pulsierende Kapseln – einsammeln gibt
+  **immer +25**, egal was der Auftrag sagt.
 - **Drei Lern-Phasen** (automatisch steigend oder im Menü ⚙️ fest wählbar):
   - **Phase 1 (Klasse 1):** nur die Form zählt („Sammle Quadrate!“)
   - **Phase 2 (Klasse 1/2):** Form **und** Farbe („Fange rote Dreiecke!“)
-  - **Phase 3 (Klasse 2/3):** Umkehrlogik („Sammle alles, ABER KEINE Kreise!“)
-- **Touch-Drag-Steuerung:** Finger irgendwo aufs Spielfeld legen und wischen –
-  das Schiff gleitet weich mit, ohne unter dem Finger zu verschwinden
-  (relative Steuerung; am Desktop gehen auch Maus und Pfeiltasten).
+  - **Phase 3 (Klasse 2/3):** Umkehrlogik („Alles, ABER KEINE Kreise!“)
+- **Drei Schwierigkeitsstufen** (🐣 Leicht / 🚀 Mittel / ☄️ Schwer) für
+  kleine, mittlere und große Kinder: skalieren Falltempo, Formen-Dichte,
+  Größen-Streuung und den Formen-Vorrat (Stern/Würfel/Pyramide). Innerhalb
+  einer Runde steigt die Schwierigkeit zusätzlich **inkrementell**: Level 1
+  beginnt bewusst mit ganz wenigen Formen, mit jedem Level werden Dichte
+  und Fluggeschwindigkeit größer.
+- **Sprachausgabe:** der Bordcomputer liest jeden neuen Auftrag über die
+  Web Speech API vor (deutsche Stimme, abschaltbar) – zusätzlich zeigt die
+  Konsole die gesuchte Form als Symbol.
+- **Atempause beim Auftragswechsel:** nach dem Level-Up kommen kurz keine
+  neuen Formen – der Bildschirm leert sich, das Kind kann durchatmen, dann
+  erscheint (und ertönt) der neue Auftrag und es geht weiter.
+- **Wischfläche + Steuerung:** eigener Wisch-Streifen **unter** dem
+  Raumschiff – die Hand verdeckt nie das Schiff. Wischen direkt auf dem
+  Spielfeld funktioniert weiterhin (relative Drag-Steuerung; am Desktop
+  gehen auch Maus und Pfeiltasten). Pause ⏸️ und Neustart 🔄 sitzen oben
+  in der Top-Bar, wo sie beim Wischen nicht im Weg sind.
 - **Punktesystem ohne Frust:** richtige Form **+10** (leuchtet auf und
-  zerplatzt), falsche Form **−5** (Schiff wackelt, Bildschirmrand blinkt kurz
-  rot) – **kein Game Over**, verpasste Formen kosten nichts, der Punktestand
-  fällt nie unter 0.
-- **Level-Progression:** alle **10 richtigen Formen** gibt es Konfetti, einen
-  neuen Auftrag und ein minimal höheres Tempo (der Fortschrittsbalken in der
-  Konsole zeigt, wie weit es noch ist). Drei Grund-Tempi (🐢/🚀/☄️) im Menü.
-- **Scrollender Weltraum:** zwei Sternen-Ebenen wandern per CSS-Animation mit
-  Parallax-Effekt nach unten – je höher das Level, desto schneller der Flug.
+  zerplatzt), falsche Form **−5** mit ruhigem Feedback: kurzer Brumm-Sound,
+  eine kleine 🔥-Flamme am Schiff, roter Rand-Blitz – **kein Game Over**,
+  verpasste Formen kosten nichts, der Punktestand fällt nie unter 0.
+- **3D-Sternenfeld:** ein Canvas-Weltraum mit ~140 Sternen in echter
+  Tiefenstaffelung – nahe Sterne sind groß, hell und schnell, ferne klein
+  und langsam, und beim Lenken driften sie unterschiedlich stark zur Seite
+  (Parallaxe). Je höher Level und Schwierigkeit, desto schneller der Flug.
 - **Gleiche Designsprache wie Uhrzeit-Uhu:** Top-Bar mit Marke, weißen
   Punkte-Chips und ⚙️-Zahnrad, dunkles Schild mit goldener Schrift,
   Einstellungs-Seite mit Options-Karten, Konfetti-Feier, lokale Schriften
@@ -61,9 +84,9 @@ python3 -m http.server 8000
 
 | Datei                  | Inhalt                                                      |
 |------------------------|-------------------------------------------------------------|
-| `index.html`           | Struktur/Markup (Top-Bar, Konsole, Spielfeld, Menü)          |
-| `style.css`            | Aussehen, CSS-Formen, Sternen-Animation, responsives Layout  |
-| `game.js`              | Gesamte Spiellogik (Game-Loop, Kollision, Touch, Sound)      |
+| `index.html`           | Struktur/Markup (Top-Bar, Konsole, Spielfeld, Wischfläche, Menü) |
+| `style.css`            | Aussehen, SVG-/3D-Formen, responsives Layout                 |
+| `game.js`              | Gesamte Spiellogik (Game-Loop, Kollision, Touch, Sound, Sprache, Sternenfeld) |
 | `manifest.webmanifest` | PWA-Manifest (installierbar)                                 |
 | `icon.svg`             | App-Icon (Rakete + Formen)                                   |
 | `fonts/`               | Lokale Schriften (Baloo 2, Nunito – offline-fähig)           |
@@ -81,17 +104,25 @@ python3 -m http.server 8000
 - **Touch:** Pointer-Events (Touch + Maus + Stift in einer API) mit
   **relativem** Drag – der Fingerweg wird leicht verstärkt (×1,15) auf das
   Schiff übertragen, so erreicht man beide Ränder ohne umzugreifen.
+- **3D-Objekte:** `transform-style: preserve-3d` + einzelne Flächen-Divs
+  (`rotateY`/`rotateX` + `translateZ`); die Drehung um zwei Achsen ist
+  bewusst Spiel-Information, keine Deko.
+- **Sternenfeld:** ein `<canvas>` hinter dem Spiel; jeder Stern hat einen
+  Tiefenwert `z` – Geschwindigkeit ~ `z³`, Größe/Helligkeit ~ `z`, plus
+  seitliche Parallaxe beim Lenken.
 
-Alle drei Themen sind im Quellcode (`game.js`) ausführlich auf Deutsch
+Alle Themen sind im Quellcode (`game.js`) ausführlich auf Deutsch
 kommentiert.
 
 ## 🎯 Anpassen
 
 Häufige Stellschrauben liegen zentral am Anfang von `game.js`:
 
-- **Punkte & Level-Rhythmus:** `PUNKTE_RICHTIG`, `PUNKTE_FALSCH`, `ZIEL_PRO_LEVEL`
-- **Tempo:** `TEMPO_CONFIG`, `TEMPO_PRO_LEVEL`, `TEMPO_DECKEL`
-- **Anteil passender Formen:** `TREFFER_QUOTE`
-- **Formen/Farben (auch Namen):** `FORMEN`, `FARBEN`
+- **Punkte & Level-Rhythmus:** `PUNKTE_RICHTIG`, `PUNKTE_FALSCH`,
+  `PUNKTE_BONUS`, `ZIEL_PRO_LEVEL`
+- **Schwierigkeit:** `STUFEN` (Tempo, Dichte, Größen, Trefferquote, Rampe),
+  `TEMPO_DECKEL`, `ATEMPAUSE_SEK`
+- **Formen-Vorrat pro Stufe/Level:** `aktiverFormenPool()`
+- **Formen/Farben (auch Namen):** `FORMEN`, `FARBEN`, `SVG_PFADE`
 - **Farbwerte & Design:** CSS-Variablen oben in `style.css`
 - **Cache-Version bei Änderungen:** `?v=NUMMER` in `index.html` erhöhen

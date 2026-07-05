@@ -13,8 +13,11 @@
      - hier zusaetzlich: dunkler Weltraum als Buehne, Formen in leuchtenden
        Grundfarben (starker Kontrast, gut erkennbar)
 
-   Die fallenden Formen sind REINES CSS (border-radius + clip-path),
-   keine Bilddateien – dadurch gestochen scharf und beliebig einfaerbbar.
+   Die fallenden 2D-Formen sind INLINE-SVG (game.js baut sie zusammen):
+   exakte Geometrie (regelmaessiges Sechseck, gleichseitiges Dreieck), eine
+   kraeftige weisse Kontur und satte Fuellfarbe – dadurch gestochen scharf
+   statt verwaschen. Die 3D-Objekte (Wuerfel, Pyramide) sind echte CSS-3D-
+   Konstruktionen aus einzelnen Flaechen, die sich um zwei Achsen drehen.
    =========================================================================== */
 
 
@@ -74,9 +77,6 @@
   --sh-soft:  0 14px 34px rgba(2, 8, 30, 0.45);
   --sh-card:  0 8px 20px rgba(36, 64, 130, 0.14);
   --sh-chip:  0 4px 12px rgba(2, 8, 30, 0.35);
-
-  /* Tempo des Sternen-Scrollens: wird von game.js pro Level leicht erhoeht */
-  --sterne-dauer: 10s;
 }
 
 
@@ -112,7 +112,7 @@ body {
 
 /* Auf grossen Bildschirmen (Tablet quer / Desktop) bleibt das Spiel eine
    schmale Hochkant-Saeule in der Mitte – es ist ein Portrait-Spiel. */
-.top-bar, .konsole, .spielfeld, .fuss-leiste {
+.top-bar, .konsole, .spielfeld, .wisch-zone {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -121,49 +121,19 @@ body {
 }
 
 
-/* 2b) WELTRAUM: scrollende Sternen-Ebenen ------------------------------------ */
+/* 2b) WELTRAUM: Canvas-Sternenfeld mit echter Tiefe --------------------------
+   Das Canvas liegt vollflaechig HINTER dem Spiel. game.js zeichnet darauf
+   ~140 Sterne mit eigenem Tiefenwert (z): nahe Sterne sind gross, hell und
+   schnell, ferne klein, blass und langsam. Beim Lenken driften sie ausserdem
+   unterschiedlich stark seitwaerts (Parallaxe) – ein raeumlicher Flugeffekt,
+   der sich mit Level und Schwierigkeitsstufe beschleunigt.                  */
 .weltraum {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
   pointer-events: none;
-  overflow: hidden;
-}
-
-/* Die Sterne sind winzige radiale Farbverlaeufe in einem Kachel-Muster.
-   Die Animation schiebt background-position-y um GENAU eine Kachelhoehe
-   nach unten -> nahtlose Endlos-Schleife. Zwei Ebenen mit verschiedenen
-   Geschwindigkeiten ergeben einen Parallax-Effekt (Flug-Gefuehl). */
-.sterne {
-  position: absolute;
-  inset: 0;
-}
-.sterne-fern {
-  background-image:
-    radial-gradient(1px 1px at 25px 35px,  rgba(255,255,255,0.7), transparent 55%),
-    radial-gradient(1px 1px at 130px 90px, rgba(255,255,255,0.5), transparent 55%),
-    radial-gradient(1px 1px at 70px 160px, rgba(255,255,255,0.6), transparent 55%),
-    radial-gradient(1px 1px at 180px 40px, rgba(255,255,255,0.4), transparent 55%);
-  background-size: 220px 220px;
-  animation: sterne-fall-fern calc(var(--sterne-dauer) * 2.2) linear infinite;
-}
-.sterne-nah {
-  background-image:
-    radial-gradient(2px 2px at 40px 60px,   #ffffff, transparent 55%),
-    radial-gradient(2px 2px at 150px 155px, #dfe8ff, transparent 55%),
-    radial-gradient(1.5px 1.5px at 90px 220px, #ffffff, transparent 55%),
-    radial-gradient(2px 2px at 220px 20px,  #cdd9ff, transparent 55%);
-  background-size: 260px 260px;
-  animation: sterne-fall-nah var(--sterne-dauer) linear infinite;
-}
-/* Jede Ebene wandert um EXAKT ihre eigene Kachelhoehe -> nahtlose Schleife. */
-@keyframes sterne-fall-fern {
-  from { background-position-y: 0; }
-  to   { background-position-y: 220px; }
-}
-@keyframes sterne-fall-nah {
-  from { background-position-y: 0; }
-  to   { background-position-y: 260px; }
 }
 
 /* Roter Rand-Blitz bei Fehlgriff: kurz einblenden, sanft ausblenden. */
@@ -209,7 +179,7 @@ body {
 }
 .marke:active { transform: scale(0.94); }
 /* Die Marke darf auf sehr schmalen Handys schrumpfen, damit Chips und
-   Zahnrad IMMER komplett sichtbar bleiben (Text wird notfalls gekuerzt). */
+   Buttons IMMER komplett sichtbar bleiben (Text wird notfalls gekuerzt). */
 .marke, .marke-spalte { min-width: 0; }
 .marke-spalte > span { overflow: hidden; text-overflow: ellipsis; }
 .marke-logo {
@@ -266,21 +236,29 @@ body {
 .stat.puls { animation: stat-puls 0.35s ease; }
 @keyframes stat-puls { 40% { transform: scale(1.14); } }
 
-/* Grosser, gut erreichbarer Zahnrad-Button (wie beim Uhu) */
+/* Button-Gruppe rechts: Pause + Neustart + Zahnrad. Sie sitzen BEWUSST
+   oben – unten ist jetzt die Wischflaeche, dort waeren sie im Weg. */
+.aktionen { display: flex; align-items: center; gap: 8px; flex: none; }
+
+.aktion-button,
 .menue-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   flex: none;
   background: var(--surface);
   border: none;
   border-radius: 50%;
   box-shadow: var(--sh-chip);
   cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
   transition: transform 0.18s ease;
 }
+.aktion-button:active { transform: scale(0.9); }
+.menue-button { width: 52px; height: 52px; }
 .menue-button:active { transform: scale(0.9) rotate(35deg); }
 .menue-icon { font-size: 1.8rem; line-height: 1; }
 
@@ -308,6 +286,38 @@ body {
   letter-spacing: 2px;
   color: #aebce6;
 }
+
+/* Auftragszeile: Symbol der gesuchten Form + Text nebeneinander.
+   Das Symbol ist fuer Nicht-Leser der wichtigste Hinweis. */
+.auftrag-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.auftrag-symbol {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  perspective: 520px;      /* fuer die Mini-3D-Vorschau (Wuerfel/Pyramide) */
+}
+.auftrag-symbol:empty { display: none; }
+.auftrag-symbol .form-svg { width: 100%; height: 100%; display: block; }
+/* Phase 3 ("… aber KEINE …"): Verbots-Zeichen ueber dem Symbol */
+.auftrag-symbol.verboten::after {
+  content: "🚫";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  line-height: 1;
+  opacity: 0.92;
+}
+
 .konsole-text {
   font-family: var(--font-display);
   font-weight: 800;
@@ -363,11 +373,13 @@ body {
 .spielfeld:active { cursor: grabbing; }
 
 /* Der Geo-Gleiter: ein Emoji-Raumschiff. Position kommt per transform aus
-   game.js (transform ist GPU-beschleunigt -> fluessig, kein Layout-Reflow). */
+   game.js (transform ist GPU-beschleunigt -> fluessig, kein Layout-Reflow).
+   Er schwebt ein Stueck ueber dem Feldrand – direkt darunter beginnt die
+   Wischflaeche, so verdeckt die Hand das Schiff nicht. */
 .gleiter {
   position: absolute;
   left: 0;
-  bottom: 10px;
+  bottom: 14px;
   width: 64px;
   height: 64px;
   display: flex;
@@ -398,60 +410,141 @@ body {
 }
 @keyframes schub { from { opacity: 0.55; } to { opacity: 1; } }
 
-/* Wackeln nach einem Fehlgriff (sanftes negatives Feedback, kein Game Over) */
-.gleiter.wackelt { animation: gleiter-wackeln 0.5s ease; }
-@keyframes gleiter-wackeln {
-  0%, 100% { rotate: 0deg; }
-  20%      { rotate: -14deg; }
-  50%      { rotate: 12deg; }
-  75%      { rotate: -7deg; }
+/* Kleine Flamme am Schiff nach einem Fehlgriff: ploppt kurz auf und
+   verpufft nach oben – ruhiges, klares Feedback statt wildem Wackeln. */
+.fehl-flamme {
+  position: absolute;
+  z-index: 6;
+  font-size: 30px;
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  animation: flamme-puff 0.65s ease-out forwards;
+}
+@keyframes flamme-puff {
+  0%   { opacity: 0; transform: translate(-50%, 10px)  scale(0.4); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -36px) scale(1.5); }
 }
 
-/* --- Die fallenden Formen (REINES CSS, keine Bilder) ---------------------
-   Aufbau aus ZWEI Divs:
-     .form        = aeusserer Rahmen: Position (transform) + Leucht-Schatten.
-     .form-innen  = die eigentliche Silhouette per clip-path/border-radius.
-   Warum zweiteilig? clip-path wuerde einen box-shadow am selben Element
-   mit abschneiden – der Glow-Schatten liegt deshalb auf dem AEUSSEREN Div
-   (als drop-shadow-Filter, der der ausgeschnittenen Silhouette folgt).   */
+/* --- Die fallenden Formen -------------------------------------------------
+   Aeusseres Div .form = Position (transform) + dunkler Boden-Schatten.
+   Inhalt je nach Form:
+     2D  -> ein Inline-SVG (.form-svg): exakte Geometrie + weisse Kontur.
+     3D  -> ein .obj3d-Div mit einzelnen Flaechen (CSS 3D, dreht sich).   */
 .form {
   position: absolute;
   top: 0;
   left: 0;
   will-change: transform;
   pointer-events: none;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.25));
+  filter: drop-shadow(0 5px 12px rgba(2, 8, 30, 0.5));
 }
-.form-innen { width: 100%; height: 100%; }
+.form-svg { width: 100%; height: 100%; display: block; }
 
-/* Die fuenf Silhouetten */
-.form-kreis    .form-innen { border-radius: 50%; }
-.form-quadrat  .form-innen { border-radius: 14%; }
-.form-dreieck  .form-innen { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
-.form-raute    .form-innen { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
-.form-sechseck .form-innen { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+/* --- 3D-OBJEKTE (Wuerfel + Pyramide) --------------------------------------
+   Echte CSS-3D-Konstruktionen: transform-style: preserve-3d haelt die
+   Flaechen im Raum, perspective auf dem Elternelement sorgt fuer Fluchtpunkt.
+   Die Animation dreht um Y (voll) und kippt gleichzeitig um X – so sieht
+   man in jeder Sekunde, dass es ein Koerper ist (Wuerfel != Quadrat,
+   Pyramide != Dreieck). --s = Kantenlaenge in px (setzt game.js inline). */
+.form-3d { perspective: 520px; }
 
-/* Die vier Grundfarben (kleiner Verlauf = leichte 3D-Wirkung) */
-.farbe-rot   .form-innen { background: linear-gradient(150deg, #ff8177, var(--form-rot) 65%); }
-.farbe-blau  .form-innen { background: linear-gradient(150deg, #7cb1ff, var(--form-blau) 65%); }
-.farbe-gruen .form-innen { background: linear-gradient(150deg, #74e6a4, var(--form-gruen) 65%); }
-.farbe-gelb  .form-innen { background: linear-gradient(150deg, #ffe382, var(--form-gelb) 65%); }
+.obj3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: obj-dreh 5.5s linear infinite;
+}
+@keyframes obj-dreh {
+  0%   { transform: rotateX(-24deg) rotateY(0deg); }
+  50%  { transform: rotateX(24deg)  rotateY(180deg); }
+  100% { transform: rotateX(-24deg) rotateY(360deg); }
+}
+
+/* Flaechen: halbtransparent gefuellt (man sieht die hinteren Kanten
+   durchscheinen = Koerper-Eindruck), unterschiedlich hell schattiert. */
+.obj3d > div {
+  position: absolute;
+  background: var(--fc, #dfe7ff);
+  opacity: 0.9;
+}
+.obj3d.farbe-rot     { --fc: var(--form-rot); }
+.obj3d.farbe-blau    { --fc: var(--form-blau); }
+.obj3d.farbe-gruen   { --fc: var(--form-gruen); }
+.obj3d.farbe-gelb    { --fc: var(--form-gelb); }
+.obj3d.farbe-neutral { --fc: #dfe7ff; }
+
+/* Wuerfel: 6 Flaechen, jede um 90° gedreht und um die halbe Kante nach
+   aussen geschoben. Die Flaechen sind auf 78 % verkleinert (inset 11%),
+   damit der rotierende Wuerfel optisch in seiner Fang-Box bleibt. */
+.wuerfel > div { inset: 11%; border: 2px solid rgba(255, 255, 255, 0.85); }
+.w-vorn   { transform: translateZ(calc(var(--s) * 0.39)); }
+.w-hinten { transform: rotateY(180deg) translateZ(calc(var(--s) * 0.39)); filter: brightness(0.7); }
+.w-rechts { transform: rotateY(90deg)  translateZ(calc(var(--s) * 0.39)); filter: brightness(0.85); }
+.w-links  { transform: rotateY(-90deg) translateZ(calc(var(--s) * 0.39)); filter: brightness(0.85); }
+.w-oben   { transform: rotateX(90deg)  translateZ(calc(var(--s) * 0.39)); filter: brightness(1.3); }
+.w-unten  { transform: rotateX(-90deg) translateZ(calc(var(--s) * 0.39)); filter: brightness(0.55); }
+
+/* Pyramide: 4 Dreiecks-Seiten, jede an ihrer Grundkante (transform-origin
+   unten) um 30° nach innen gekippt -> die Spitzen treffen sich exakt ueber
+   der Mitte. Dazu eine quadratische Bodenplatte. Kein border: der wuerde
+   vom clip-path mit abgeschnitten; die Kanten entstehen durch die
+   unterschiedliche Helligkeit der Seiten. */
+.pyramide .p-f {
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  transform-origin: 50% 100%;
+}
+.p-1 { transform: rotateY(0deg)   translateZ(calc(var(--s) / 2)) rotateX(30deg); }
+.p-2 { transform: rotateY(90deg)  translateZ(calc(var(--s) / 2)) rotateX(30deg); filter: brightness(0.8); }
+.p-3 { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)) rotateX(30deg); filter: brightness(0.62); }
+.p-4 { transform: rotateY(270deg) translateZ(calc(var(--s) / 2)) rotateX(30deg); filter: brightness(1.15); }
+.p-boden {
+  inset: 0;
+  transform-origin: 50% 100%;
+  transform: rotateX(-90deg) translateY(calc(var(--s) / 2));
+  filter: brightness(0.5);
+}
+
+/* --- BONUS-EXTRAS (Energiekapsel ⚡ / Treibstofftank ⛽) -------------------
+   Goldene, pulsierende Kapseln: einsammeln lohnt sich IMMER (+25 Punkte),
+   egal was der Auftrag sagt. */
+.form.bonus .bonus-kapsel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff8e0, #ffd76a 60%, #f0a53c);
+  border: 3px solid #ffffff;
+  animation: bonus-puls 0.9s ease-in-out infinite alternate;
+}
+@keyframes bonus-puls {
+  from { box-shadow: 0 0 10px rgba(255, 215, 100, 0.55); transform: scale(0.96); }
+  to   { box-shadow: 0 0 26px rgba(255, 225, 130, 0.95); transform: scale(1.04); }
+}
 
 /* Richtig gefangen: kurz aufleuchten + aufpoppen, dann entfernt game.js das Div */
 .form.gefangen { filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.9)); }
-.form.gefangen .form-innen { animation: form-pop 0.35s ease-out forwards; }
+.form.gefangen .form-svg,
+.form.gefangen .obj3d,
+.form.gefangen .bonus-kapsel { animation: form-pop 0.35s ease-out forwards; }
 @keyframes form-pop {
   40%  { transform: scale(1.35); opacity: 1; }
   100% { transform: scale(0.2);  opacity: 0; }
 }
 
 /* Falsch gefangen: grau werden und schnell verblassen */
-.form.daneben .form-innen { animation: form-weg 0.3s ease-out forwards; }
+.form.daneben .form-svg,
+.form.daneben .obj3d { animation: form-weg 0.3s ease-out forwards; }
 @keyframes form-weg {
   100% { transform: scale(0.6); opacity: 0; filter: grayscale(1); }
 }
 
-/* Schwebende "+10" / "−5"-Zahlen an der Fangstelle */
+/* Schwebende "+10" / "−5" / "+25"-Zahlen an der Fangstelle */
 .punkte-flug {
   position: absolute;
   z-index: 6;
@@ -463,6 +556,7 @@ body {
 }
 .punkte-flug.plus  { color: #7ce7bd; }
 .punkte-flug.minus { color: #ff8d84; }
+.punkte-flug.bonus { color: #ffd76a; }
 @keyframes punkte-flug {
   from { transform: translateY(0);     opacity: 1; }
   to   { transform: translateY(-60px); opacity: 0; }
@@ -505,27 +599,31 @@ body {
 .weiter-button:active { transform: translateY(2px); }
 
 
-/* 6) FOOTER: dezente Pause-/Neustart-Buttons ---------------------------------- */
-.fuss-leiste {
+/* 6) WISCHFLAECHE: Steuerbereich unter dem Raumschiff --------------------------
+   Ein eigener Streifen am unteren Rand, auf dem das Kind bequem wischen
+   kann, ohne mit der Hand das Schiff oder die fallenden Formen zu
+   verdecken. (Wischen auf dem Spielfeld selbst geht weiterhin auch.) */
+.wisch-zone {
+  flex: none;
+  height: clamp(64px, 11vh, 116px);
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  touch-action: none;              /* gleiche Regel wie beim Spielfeld */
+  cursor: grab;
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 2px dashed rgba(255, 255, 255, 0.18);
+  padding-bottom: env(safe-area-inset-bottom);
 }
-.fuss-button {
-  min-height: 40px;
-  padding: 6px 18px;
+.wisch-zone:active { cursor: grabbing; background: rgba(255, 255, 255, 0.08); }
+.wisch-hinweis {
   font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #aebce6;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: transform 0.1s ease, background 0.15s ease;
+  letter-spacing: 1px;
+  color: rgba(174, 188, 230, 0.6);
+  pointer-events: none;
 }
-.fuss-button:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.16); }
 
 
 /* 7) KONFETTI + POPOVER (Bausteine wie beim Uhrzeit-Uhu) ----------------------- */
@@ -686,7 +784,7 @@ body {
 
 
 /* 9) KLEINE BILDSCHIRME + BEWEGUNGS-REDUZIERUNG -------------------------------- */
-@media (max-width: 420px) {
+@media (max-width: 460px) {
   .top-bar { padding: 8px 8px; gap: 6px; }
   .marke { padding: 4px 2px; gap: 6px; }
   .marke-text { font-size: 1.05rem; }
@@ -695,21 +793,30 @@ body {
   .status { gap: 6px; }
   .stat { padding: 6px 10px 6px 8px; gap: 4px; }
   .stat-wert { font-size: 1.15rem; }
+  .aktionen { gap: 5px; }
+  .aktion-button { width: 42px; height: 42px; font-size: 1.15rem; }
   .menue-button { width: 44px; height: 44px; }
   .menue-icon { font-size: 1.55rem; }
   .opt-reihe { gap: 8px; }
 }
-@media (max-width: 370px) {
-  .marke-studio { font-size: 0.48rem; letter-spacing: 0; }
+@media (max-width: 390px) {
+  .marke-studio { display: none; }
+  .marke-text { font-size: 1rem; }
   .stat { padding: 6px 9px 6px 7px; }
+  .auftrag-symbol { width: 38px; height: 38px; }
+  .auftrag-symbol.verboten::after { font-size: 34px; }
 }
 @media (max-height: 640px) {
   .konsole { margin: 6px auto 4px; }
   .konsole-fortschritt { height: 6px; margin-top: 3px; }
+  .wisch-zone { height: clamp(54px, 9vh, 80px); }
 }
 
 /* Nutzer:innen mit "Bewegung reduzieren": dekorative Animationen aus.
-   (Die fallenden Formen selbst sind der Spielkern und bleiben.) */
+   Die 3D-Drehung bleibt (nur langsamer) – ohne sie waere ein Wuerfel nicht
+   von einem Quadrat zu unterscheiden, sie ist also Spiel-Information. */
 @media (prefers-reduced-motion: reduce) {
-  .sterne, .gleiter::after, .konfetti { animation: none; }
+  .gleiter::after, .konfetti { animation: none; }
+  .form.bonus .bonus-kapsel { animation: none; }
+  .obj3d { animation-duration: 12s; }
 }
