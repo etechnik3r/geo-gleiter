@@ -843,6 +843,15 @@ body {
 .opt-name { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: var(--ink); }
 .opt-text { font-size: 0.82rem; color: var(--muted); line-height: 1.15; }
 
+/* Rekord-Anzeige im Menue (der Rekord steht nur noch hier + auf dem
+   Missions-Ende-Bildschirm, nicht mehr staendig oben im HUD). */
+.opt-rekord-anzeige {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.opt-rekord-anzeige span { font-weight: 800; color: var(--ink); }
+
 /* Rekord-zuruecksetzen-Button (dezent rot) */
 .reset-button {
   width: 100%;
