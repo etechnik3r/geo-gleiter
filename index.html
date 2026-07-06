@@ -87,9 +87,9 @@
         <span class="stat-icon" aria-hidden="true">⭐</span>
         <span class="stat-wert" id="anzeige-punkte">0</span>
       </button>
-      <button type="button" class="stat" id="stat-rekord" aria-label="Punkte-Rekord">
-        <span class="stat-icon" aria-hidden="true">🏆</span>
-        <span class="stat-wert" id="anzeige-rekord">0</span>
+      <button type="button" class="stat" id="stat-serie" aria-label="Trefferserie">
+        <span class="stat-icon" aria-hidden="true">🔥</span>
+        <span class="stat-wert" id="anzeige-serie">0</span>
       </button>
     </div>
     <div class="aktionen">
@@ -275,9 +275,14 @@
           </div>
         </section>
 
-        <!-- Rekord zuruecksetzen -->
+        <!-- Rekord zuruecksetzen: der Allzeit-Rekord steht nicht mehr staendig
+             oben im HUD (das zeigt jetzt die Trefferserie), ist hier und auf
+             dem Missions-Ende-Bildschirm aber weiterhin einsehbar. -->
         <section class="opt-gruppe">
           <h3 class="opt-titel">🧹 Fortschritt</h3>
+          <p class="opt-rekord-anzeige" id="opt-rekord-anzeige">
+            🏆 Dein Rekord: <span id="anzeige-rekord">0</span> Punkte
+          </p>
           <button type="button" class="reset-button" id="button-reset">
             🗑️ Rekord zurücksetzen
           </button>

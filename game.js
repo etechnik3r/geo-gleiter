@@ -130,12 +130,25 @@
   const GLEITER_HOEHE  = 72;   // das SVG-Schiff ist hoeher als das alte Emoji
   const GLEITER_BODEN  = 14;   // Abstand des Gleiters vom unteren Feldrand
 
+  // Fang-Box des Gleiters fuer die Kollision: DEUTLICH kleiner als die
+  // Box oben. Das SVG zeigt eine spitz zulaufende Rakete mit schmalen
+  // Fluegeln - drumherum ist viel durchsichtiger Rand. Ohne Verkleinerung
+  // wuerde eine Form schon als "getroffen" zaehlen, obwohl optisch noch
+  // Abstand zum Rumpf besteht. Werte von Hand am SVG abgemessen
+  // (viewBox 0 0 64 80, siehe index.html):
+  //   Breite : Fluegelspannweite reicht nur von x=14.5 bis x=49.5 (~35/64)
+  //   Hoehe  : Rumpf reicht von der Nase (y=2) bis zur Duese (y=62) -
+  //            die duenne Flammen-Spitze darunter zaehlt NICHT mit.
+  const GLEITER_HITBOX_BREITE = 34;
+  const GLEITER_HITBOX_HOEHE  = 54;
+
 
   /* 2. SPIELZUSTAND (STATE) ------------------------------------------------ */
 
   const state = {
     punkte: 0,
     rekord: 0,
+    serie: 0,                // richtige Faenge IN FOLGE, s. formGefangen()
     level: 1,
     richtigeImLevel: 0,      // Zaehler bis ZIEL_PRO_LEVEL
     auftrag: null,           // { phase, form, farbe } – siehe auftragWuerfeln()
@@ -195,8 +208,9 @@
     buttonNochmal: $("button-nochmal"),
     punkte:        $("anzeige-punkte"),
     rekord:        $("anzeige-rekord"),
+    serie:         $("anzeige-serie"),
     statPunkte:    $("stat-punkte"),
-    statRekord:    $("stat-rekord"),
+    statSerie:     $("stat-serie"),
     fehlerBlitz:   $("fehler-blitz"),
     konfetti:      $("konfetti"),
     popover:       $("popover"),
@@ -685,7 +699,12 @@
      Kinderfreundlich gemogelt wird trotzdem:
        - Die Fang-Box der Form ist etwas KLEINER als ihr Bild (Faktor 0.75).
          So zaehlt ein knappes Vorbeischrammen nicht als (Fehl-)Fang –
-         das fuehlt sich fairer an, besonders bei falschen Formen.          */
+         das fuehlt sich fairer an, besonders bei falschen Formen.
+       - Die Fang-Box des GLEITERS ist ebenfalls kleiner als seine Box
+         (GLEITER_HITBOX_BREITE/HOEHE) und folgt dem sichtbaren Rumpf +
+         Fluegeln der Rakete statt des vollen, breiten SVG-Rahmens. Sonst
+         wuerde eine Form schon "treffen", waehrend optisch noch deutlich
+         Luft zwischen ihr und dem Schiff ist.                             */
 
   function beruehrtGleiter(f) {
     // Fang-Box der Form (leicht verkleinert, s. o.)
@@ -695,11 +714,13 @@
     const formOben   = f.y - halb;
     const formUnten  = f.y + halb;
 
-    // Fang-Box des Gleiters (liegt fest am unteren Feldrand)
-    const schiffLinks  = state.gleiterX - GLEITER_BREITE / 2;
-    const schiffRechts = state.gleiterX + GLEITER_BREITE / 2;
-    const schiffUnten  = state.feldHoehe - GLEITER_BODEN;
-    const schiffOben   = schiffUnten - GLEITER_HOEHE;
+    // Fang-Box des Gleiters (liegt fest am unteren Feldrand): schmaler als
+    // die volle SVG-Box und am Rumpf ausgerichtet - die duenne Flammen-
+    // Spitze unten zaehlt nicht mit (s. Konstanten oben).
+    const schiffLinks  = state.gleiterX - GLEITER_HITBOX_BREITE / 2;
+    const schiffRechts = state.gleiterX + GLEITER_HITBOX_BREITE / 2;
+    const schiffOben   = state.feldHoehe - GLEITER_BODEN - GLEITER_HOEHE;
+    const schiffUnten  = schiffOben + GLEITER_HITBOX_HOEHE;
 
     // AABB-Test: keine Ueberlappung, wenn eine Box komplett neben/ueber/
     // unter der anderen liegt – sonst Treffer!
@@ -737,6 +758,7 @@
       tonRichtig();
 
       state.richtigeImLevel += 1;
+      serieSetzen(state.serie + 1);
       if (state.richtigeImLevel >= ZIEL_PRO_LEVEL) {
         levelAufstieg();
       }
@@ -760,6 +782,7 @@
       tonFalsch();
       flammeZeigen();
       energieAendern(-stufe().energieVerlust);
+      serieSetzen(0);
 
       el.fehlerBlitz.classList.remove("an");
       void el.fehlerBlitz.offsetWidth;             // Animation neu starten
@@ -803,10 +826,13 @@
   function missionEnde() {
     if (state.vorbei) return;
     state.vorbei = true;
+    const rekordSatz = state.punkte >= state.rekord && state.punkte > 0
+      ? " 🏆 Neuer Rekord!"
+      : " Dein Rekord bleibt bei " + state.rekord + " Punkten.";
     el.endeText.textContent =
       "Dein Raumschiff hat keine Energie mehr. " +
       "Du hast " + state.punkte + " Punkte geschafft und Level " +
-      state.level + " erreicht!";
+      state.level + " erreicht!" + rekordSatz;
     el.endeOverlay.hidden = false;
     tonEnde();
     sprechen("Oh nein, die Energie ist leer! Du hast " + state.punkte +
@@ -852,6 +878,19 @@
     flug.style.top = (y - 30) + "px";
     el.spielfeld.appendChild(flug);
     setTimeout(() => flug.remove(), 850);
+  }
+
+  // Trefferserie setzen (richtige Faenge IN FOLGE) + Chip aktualisieren.
+  // Steht statt des Allzeit-Rekords staendig im HUD, weil sie waehrend
+  // des Spielens viel oefter interessant ist als ein Wert, der sich meist
+  // erst nach vielen Runden aendert. Der Rekord bleibt trotzdem einsehbar:
+  // im Menue (Fortschritt) und auf dem Missions-Ende-Bildschirm.
+  function serieSetzen(neu) {
+    state.serie = neu;
+    el.serie.textContent = state.serie;
+    el.statSerie.classList.remove("puls");
+    void el.statSerie.offsetWidth;
+    el.statSerie.classList.add("puls");
   }
 
   // Fortschrittsbalken in der Konsole (0–10 richtige Formen)
@@ -1142,6 +1181,7 @@
     energieAnzeigen();
     schildAnzeigen();
     fortschrittAnzeigen();
+    serieSetzen(0);
     auftragWuerfeln();
     pauseSetzen(false);
   }
@@ -1235,9 +1275,11 @@
         "Energie-Verlust! ⚡ lädt die Energie auf, 🛡️ schützt vor " +
         "2 Fehlgriffen (beide +25 Punkte).");
     });
-    el.statRekord.addEventListener("click", () => {
-      popoverZeigen(el.statRekord,
-        "🏆 Dein bester Punktestand aller Zeiten.");
+    el.statSerie.addEventListener("click", () => {
+      popoverZeigen(el.statSerie,
+        "🔥 Richtige Formen IN FOLGE – ein Fehlgriff setzt sie auf 0 " +
+        "zurück. Deinen Rekord aller Zeiten (🏆 " + state.rekord +
+        " Punkte) findest du im Menü.");
     });
     // Tipp irgendwo anders schliesst das Popover sofort
     document.addEventListener("pointerdown", (e) => {
