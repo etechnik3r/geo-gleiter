@@ -24,11 +24,14 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
   erkennt jederzeit, dass es Körper sind (kein „Dreieck, das Pyramide
   heißt“). Sie tauchen je nach Schwierigkeit ab bestimmten Leveln auf.
 - **Energie-Mechanik mit echter Spannung:** Das Schiff startet mit vollem
-  Energie-Balken. Jede **falsch** gefangene Form kostet Energie (je nach
-  Schwierigkeitsstufe unterschiedlich viel) – ist der Balken leer, ist die
+  Energie-Akku (kleine **Batterie oben rechts**, wie die Akku-Anzeige eines
+  Handys – formlich eindeutig und klar vom goldenen Level-Fortschrittsbalken
+  zu unterscheiden). Jede **falsch** gefangene Form kostet Energie (je nach
+  Schwierigkeitsstufe unterschiedlich viel) – ist der Akku leer, ist die
   **Mission zu Ende** (Ergebnis-Anzeige + „Neue Mission“-Button; Punkte und
-  Level starten wieder bei 0, nur der Rekord bleibt). Der Balken färbt sich
-  von Grün über Gelb nach Rot und pulsiert, wenn es knapp wird.
+  Level starten wieder bei 0, nur der Rekord bleibt). Der Akku füllt sich in
+  Zellen und färbt sich von Grün über Gelb nach Rot – er blinkt, wenn es
+  knapp wird.
 - **Bonus-Extras:** goldene ⚡-Energiekapseln laden den Balken wieder auf
   (und kommen öfter, wenn die Energie knapp ist), blaue 🛡️-Schutzschild-
   Kapseln legen eine schimmernde Energie-Blase um das Schiff, die die
@@ -50,14 +53,26 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
 - **Sprachausgabe:** der Bordcomputer liest jeden neuen Auftrag über die
   Web Speech API vor (deutsche Stimme, abschaltbar) – zusätzlich zeigt die
   Konsole die gesuchte Form als Symbol.
-- **Atempause beim Auftragswechsel:** nach dem Level-Up kommen kurz keine
-  neuen Formen – der Bildschirm leert sich, das Kind kann durchatmen, dann
-  erscheint (und ertönt) der neue Auftrag und es geht weiter.
+- **Klarer Levelübergang mit Explosion:** ist ein Level geschafft, **zer-
+  platzen alle noch fallenden Formen** gleichzeitig mit einem kleinen
+  Explosions-Blitz (nur die hilfreichen ⚡/🛡️-Extras bleiben liegen). So
+  merkt man den Wechsel unmissverständlich und sammelt nicht mehr aus
+  Versehen die „falschen“ Formen der alten Aufgabe ein. Danach eine kurze
+  **Atempause** (es kommen kurz keine neuen Formen), dann erscheint und
+  ertönt der neue Auftrag und es geht weiter.
+- **Startbildschirm:** ein ruhiger, wertiger Auftakt mit Titel und
+  „Los geht’s!“-Knopf – der erste Tipp schaltet zugleich Ton und
+  Sprachausgabe frei (Browser erlauben das erst nach einer echten Geste).
 - **Wischfläche + Steuerung:** eigener Wisch-Streifen **unter** dem
   Raumschiff – die Hand verdeckt nie das Schiff. Wischen direkt auf dem
   Spielfeld funktioniert weiterhin (relative Drag-Steuerung; am Desktop
-  gehen auch Maus und Pfeiltasten). Pause ⏸️ und Neustart 🔄 sitzen oben
-  in der Top-Bar, wo sie beim Wischen nicht im Weg sind.
+  gehen auch Maus und Pfeiltasten). Pause ⏸️ sitzt oben in der Top-Bar, der
+  Neustart 🔄 steckt (mit Sicherheitsabfrage) im Pause-Menü – beide sind
+  beim Wischen nicht im Weg.
+- **Lebendiges, leicht breiteres Spielfeld:** die Formen-Welt ist ein paar
+  Prozent breiter als der Bildschirm und **schwenkt beim Lenken sanft mit**
+  (Kamera-Effekt) – so wirkt der Flug nicht mehr statisch, und man erreicht
+  auch Formen, die knapp über dem Rand liegen.
 - **Faires Feedback:** richtige Form **+10** (leuchtet auf und zerplatzt),
   falsche Form **−5** und Energie-Verlust mit ruhigem Feedback: kurzer
   Brumm-Sound, eine kleine 🔥-Flamme am Schiff, roter Rand-Blitz.
