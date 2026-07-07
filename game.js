@@ -218,6 +218,10 @@
     buttonPause:   $("button-pause"),
     buttonWeiter:  $("button-weiter"),
     buttonNeustart:$("button-neustart"),
+    neustartFrage: $("neustart-frage"),
+    pauseKnopfreihe: $("pause-knopfreihe"),
+    buttonNeustartAbbrechen:    $("button-neustart-abbrechen"),
+    buttonNeustartBestaetigen: $("button-neustart-bestaetigen"),
     buttonAbout:   $("button-about"),
     einstellungen: $("einstellungen"),
     buttonMenue:   $("button-einstellungen"),
@@ -1153,10 +1157,22 @@
     el.pauseOverlay.hidden = !an;
     el.buttonPause.textContent = an ? "▶️" : "⏸️";
     el.buttonPause.setAttribute("aria-label", an ? "Weiter" : "Pause");
+    neustartFrageVerstecken();    // Pause frisch geoeffnet/geschlossen -> keine offene Nachfrage anzeigen
   }
   function pauseUmschalten() {
     if (state.vorbei) return;    // nach Missions-Ende zaehlt nur "Neue Mission"
     pauseSetzen(!state.pausiert);
+  }
+
+  // Neustart aus dem Pause-Menue: erst sicherheitshalber nachfragen,
+  // damit ein versehentlicher Antipp nicht sofort die Mission beendet.
+  function neustartFrageZeigen() {
+    el.pauseKnopfreihe.hidden = true;
+    el.neustartFrage.hidden = false;
+  }
+  function neustartFrageVerstecken() {
+    el.neustartFrage.hidden = true;
+    el.pauseKnopfreihe.hidden = false;
   }
 
   // Neustart ("Neue Mission"): Punkte/Level/Energie auf Anfang,
@@ -1318,7 +1334,9 @@
 
     el.buttonPause.addEventListener("click", pauseUmschalten);
     el.buttonWeiter.addEventListener("click", () => pauseSetzen(false));
-    el.buttonNeustart.addEventListener("click", neustart);
+    el.buttonNeustart.addEventListener("click", neustartFrageZeigen);
+    el.buttonNeustartAbbrechen.addEventListener("click", neustartFrageVerstecken);
+    el.buttonNeustartBestaetigen.addEventListener("click", neustart);
     el.buttonNochmal.addEventListener("click", neustart);
 
     // Bildschirm gedreht oder Fenster veraendert? Feld + Sterne neu vermessen.

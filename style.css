@@ -182,8 +182,10 @@ body {
   transition: transform 0.1s ease;
 }
 .marke:active { transform: scale(0.94); }
-/* Die Marke darf auf sehr schmalen Handys schrumpfen, damit Chips und
-   Buttons IMMER komplett sichtbar bleiben (Text wird notfalls gekuerzt). */
+/* Die Marke darf auf sehr schmalen Handys schrumpfen. Der Spielname bleibt
+   einzeilig (noetigenfalls gekuerzt); der Studio-Schriftzug darf stattdessen
+   auf eine zweite Zeile umbrechen, damit er IMMER vollstaendig lesbar
+   bleibt statt abgeschnitten zu werden. */
 .marke, .marke-spalte { min-width: 0; }
 .marke-spalte > span { overflow: hidden; text-overflow: ellipsis; }
 .marke-logo {
@@ -198,7 +200,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  white-space: nowrap;              /* Schriftzug nie umbrechen */
+  white-space: normal;              /* darf auf 2 Zeilen umbrechen statt zu kuerzen */
   color: #9fb2e6;
 }
 .marke-text {
@@ -240,8 +242,11 @@ body {
 .stat.puls { animation: stat-puls 0.35s ease; }
 @keyframes stat-puls { 40% { transform: scale(1.14); } }
 
-/* Button-Gruppe rechts: Pause + Neustart + Zahnrad. Sie sitzen BEWUSST
-   oben – unten ist jetzt die Wischflaeche, dort waeren sie im Weg. */
+/* Button-Gruppe rechts: Pause + Zahnrad. Sie sitzen BEWUSST oben – unten
+   ist jetzt die Wischflaeche, dort waeren sie im Weg. Der Neustart-Knopf
+   ist bewusst NICHT hier (zu leicht ausversehen getroffen), sondern liegt
+   im Pause-Menue mit eigener Sicherheitsabfrage – das schafft hier oben
+   auch den Platz, den Marke/Studio-Schriftzug zum vollen Lesen brauchen. */
 .aktionen { display: flex; align-items: center; gap: 8px; flex: none; }
 
 .aktion-button,
@@ -679,6 +684,67 @@ body {
 }
 .weiter-button:active { transform: translateY(2px); }
 
+/* Knopfreihe im Pause-Menue: "Weiter" (Haupt-Aktion) + "Neustart" (Neben-
+   Aktion, fuehrt erst zur Sicherheitsabfrage, startet nie direkt neu). */
+.pause-knopfreihe { display: flex; align-items: center; gap: 14px; }
+.pause-knopfreihe[hidden] { display: none; }
+.neustart-button {
+  min-height: 58px;
+  padding: 0 22px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--on-dark);
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 18px;
+  cursor: pointer;
+}
+.neustart-button:active { transform: translateY(2px); }
+
+/* Sicherheitsabfrage vor dem eigentlichen Neustart: ersetzt die
+   Knopfreihe, solange sie offen ist (siehe neustartFrageZeigen()). */
+.neustart-frage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 320px;
+}
+.neustart-frage[hidden] { display: none; }
+.neustart-frage-text {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--on-dark);
+  line-height: 1.4;
+}
+.neustart-frage-knopfe { display: flex; align-items: center; gap: 14px; }
+.neustart-abbrechen-button,
+.neustart-bestaetigen-button {
+  min-height: 54px;
+  padding: 0 22px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.neustart-abbrechen-button {
+  color: var(--on-dark);
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+.neustart-bestaetigen-button {
+  color: #fff;
+  background: linear-gradient(180deg, #ff6b5e, #e0453a);
+  box-shadow: 0 8px 18px rgba(224, 69, 58, 0.35);
+}
+.neustart-abbrechen-button:active,
+.neustart-bestaetigen-button:active { transform: translateY(2px); }
+
 /* Missions-Ende (Energie leer): gleicher Bau wie das Pause-Overlay,
    nur mit Ergebnis-Text und "Neue Mission"-Button. */
 .ende-overlay { z-index: 22; }
@@ -899,9 +965,15 @@ body {
   .menue-button { width: 44px; height: 44px; }
   .menue-icon { font-size: 1.55rem; }
   .opt-reihe { gap: 8px; }
+  .pause-knopfreihe, .neustart-frage-knopfe { gap: 10px; }
+  .weiter-button, .neustart-button,
+  .neustart-abbrechen-button, .neustart-bestaetigen-button {
+    padding: 0 16px;
+    font-size: 1rem;
+  }
 }
 @media (max-width: 390px) {
-  .marke-studio { display: none; }
+  .marke-studio { font-size: 0.46rem; letter-spacing: 0.1px; }
   .marke-text { font-size: 1rem; }
   .stat { padding: 6px 9px 6px 7px; }
   .auftrag-symbol { width: 38px; height: 38px; }
