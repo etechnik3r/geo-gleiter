@@ -70,9 +70,11 @@
   <div class="fehler-blitz" id="fehler-blitz" aria-hidden="true"></div>
 
 
-  <!-- 1) TOP-BAR: Marke links, Punkte/Rekord mittig, Pause/Neustart/Zahnrad
-       rechts. Pause + Neustart sitzen BEWUSST OBEN: unten wird gewischt,
-       dort wuerde man sie beim Spielen staendig versehentlich treffen. -->
+  <!-- 1) TOP-BAR: Marke links, Punkte/Rekord mittig, Pause/Zahnrad rechts.
+       Pause sitzt BEWUSST OBEN: unten wird gewischt, dort wuerde man sie
+       beim Spielen staendig versehentlich treffen. Der Neustart-Knopf
+       steckt bewusst NICHT hier oben (zu leicht aus Versehen getroffen),
+       sondern im Pause-Menue mit einer Sicherheitsabfrage. -->
   <header class="top-bar">
     <!-- Klick auf die Marke zeigt Spielname + Studio -->
     <button type="button" class="marke" id="button-about" aria-label="Über das Spiel">
@@ -94,7 +96,6 @@
     </div>
     <div class="aktionen">
       <button type="button" class="aktion-button" id="button-pause" aria-label="Pause">⏸️</button>
-      <button type="button" class="aktion-button" id="button-neustart" aria-label="Neustart">🔄</button>
       <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
         <span class="menue-icon" aria-hidden="true">⚙️</span>
       </button>
@@ -162,10 +163,23 @@
       </svg>
     </div>
 
-    <!-- Pause-Overlay: liegt ueber dem Spielfeld, solange pausiert ist. -->
+    <!-- Pause-Overlay: liegt ueber dem Spielfeld, solange pausiert ist.
+         Der Neustart-Knopf sitzt bewusst HIER (statt oben in der Leiste,
+         wo er versehentlich getroffen werden koennte) und fragt vor dem
+         eigentlichen Neustart noch einmal sicher nach. -->
     <div class="pause-overlay" id="pause-overlay" hidden>
       <p class="pause-titel">⏸️ Pause</p>
-      <button type="button" class="weiter-button" id="button-weiter">▶️ Weiter</button>
+      <div class="pause-knopfreihe" id="pause-knopfreihe">
+        <button type="button" class="weiter-button" id="button-weiter">▶️ Weiter</button>
+        <button type="button" class="neustart-button" id="button-neustart">🔄 Neustart</button>
+      </div>
+      <div class="neustart-frage" id="neustart-frage" hidden>
+        <p class="neustart-frage-text">Wirklich neu starten?<br>Punkte, Level und Energie gehen verloren.</p>
+        <div class="neustart-frage-knopfe">
+          <button type="button" class="neustart-abbrechen-button" id="button-neustart-abbrechen">↩️ Abbrechen</button>
+          <button type="button" class="neustart-bestaetigen-button" id="button-neustart-bestaetigen">✅ Ja, neu starten</button>
+        </div>
+      </div>
     </div>
 
     <!-- Missions-Ende-Overlay: erscheint, wenn die Energie leer ist. -->
