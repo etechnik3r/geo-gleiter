@@ -59,7 +59,7 @@
   --accent:   #ff9e2c;     /* Highlights / aktive Auswahl-Karte */
   --cta:      #28c08a;     /* "Weiter"-Button (frisches Gruen) */
   --cta-deep: #149e72;
-  --gold:     #f3c44a;     /* Konsolen-Schrift, wie die Abfahrts-Ziffern */
+  --gold:     #f3c44a;     /* Gold-Akzente (Rekord, Konsolen-Label etc.) */
 
   /* Die vier Grundfarben der fallenden Formen (leuchtend, eindeutig) */
   --form-rot:   #ff5a4e;
@@ -334,7 +334,7 @@ body {
   font-family: var(--font-display);
   font-weight: 800;
   text-align: center;
-  color: var(--gold);
+  color: #ffffff;
   font-size: clamp(1.25rem, min(6vw, 3.4vh), 2rem);
   line-height: 1.2;
 }
