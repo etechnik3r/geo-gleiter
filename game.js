@@ -6,7 +6,7 @@
 
    SPIELPRINZIP
      Von oben fallen bunte Formen. Der Bordcomputer gibt einen Auftrag
-     ("Sammle alle DREIECKE!") – sichtbar oben als Text + Symbol UND auf
+     ("Fange alle DREIECKE!") – sichtbar oben als Text + Symbol UND auf
      Wunsch vorgelesen (Sprachausgabe fuer Kinder, die noch nicht lesen).
      Das Kind wischt auf der Wischflaeche unter dem Schiff (oder direkt
      auf dem Spielfeld), um den Geo-Gleiter zu steuern. Richtig = +10
@@ -124,6 +124,12 @@
   };
   const TEMPO_DECKEL = 0.5;    // nie schneller als 50 % der Grund-Falldauer
 
+  // Deckel gegen lange Zufalls-Serien: nach so vielen TREFFERN bzw.
+  // ABLENKERN in Folge wird die naechste Form erzwungen (statt reinem
+  // Muenzwurf per trefferQuote) – so fuehlt es sich nie nach "nur Glueck"
+  // oder "nur Pech" an, obwohl der Zufall sonst frei wuerfelt.
+  const MAX_SERIE_SPAWN = 3;
+
   // Atempause beim Auftragswechsel: so lange kommen KEINE neuen Formen
   // (die alten fallen noch zu Ende – der Bildschirm leert sich kurz).
   const ATEMPAUSE_SEK = 3.2;
@@ -153,6 +159,8 @@
     punkte: 0,
     rekord: 0,
     serie: 0,                // richtige Faenge IN FOLGE, s. formGefangen()
+    serieTreffer: 0,         // gespawnte TREFFER in Folge, s. formErzeugen()
+    serieAblenker: 0,        // gespawnte ABLENKER in Folge, s. formErzeugen()
     level: 1,
     richtigeImLevel: 0,      // Zaehler bis ZIEL_PRO_LEVEL
     auftrag: null,           // { phase, form, farbe } – siehe auftragWuerfeln()
@@ -414,11 +422,11 @@
   function auftragAlsText() {
     const a = state.auftrag;
     const formWort = FORMEN[a.form].mehrzahl;
-    if (a.phase === 1) return "Sammle alle " + formWort + "!";
+    if (a.phase === 1) return "Fange alle " + formWort + "!";
     if (a.phase === 2) {
       return "Fange " + FARBEN[a.farbe].adjektiv + " " + formWort + "!";
     }
-    return "Sammle alles, aber keine " + formWort + "!";
+    return "Fange alles, aber keine " + formWort + "!";
   }
 
   // Schreibt den Auftrag gross in die Bordcomputer-Konsole – und zeigt
@@ -431,7 +439,7 @@
     let html = "";
 
     if (a.phase === 1) {
-      html = 'Sammle alle <b class="wort-form">' + formWort + "</b>!";
+      html = 'Fange alle <b class="wort-form">' + formWort + "</b>!";
     } else if (a.phase === 2) {
       const farbWort = FARBEN[a.farbe].adjektiv.toUpperCase();
       html = 'Fange <b class="farbe-' + a.farbe + '">' + farbWort +
@@ -467,10 +475,26 @@
   // Erzeugt eine neue fallende Form am oberen Spielfeldrand.
   // Mit trefferQuote Wahrscheinlichkeit passt sie zum Auftrag, sonst ist
   // sie ein "Ablenker" – so gibt es immer genug zu fangen UND zu denken.
+  // Ab MAX_SERIE_SPAWN gleichen Formen in Folge wird gewechselt erzwungen,
+  // damit reiner Zufall nicht zu langen Treffer- oder Ablenker-Serien fuehrt.
   function formErzeugen() {
     const a = state.auftrag;
     const pool = aktiverFormenPool();
-    const sollTreffer = Math.random() < stufe().trefferQuote;
+    let sollTreffer;
+    if (state.serieTreffer >= MAX_SERIE_SPAWN) {
+      sollTreffer = false;
+    } else if (state.serieAblenker >= MAX_SERIE_SPAWN) {
+      sollTreffer = true;
+    } else {
+      sollTreffer = Math.random() < stufe().trefferQuote;
+    }
+    if (sollTreffer) {
+      state.serieTreffer += 1;
+      state.serieAblenker = 0;
+    } else {
+      state.serieAblenker += 1;
+      state.serieTreffer = 0;
+    }
     let form, farbe;
 
     if (a.phase === 3) {
@@ -1289,6 +1313,8 @@
     state.naechsterSchild = zufallZwischen(30, 50);
     state.energie = ENERGIE_MAX;
     state.schild = 0;
+    state.serieTreffer = 0;
+    state.serieAblenker = 0;
     state.vorbei = false;
     state.formen.forEach((f) => f.el.remove());
     state.formen = [];
