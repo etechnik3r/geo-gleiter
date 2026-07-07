@@ -24,16 +24,16 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
   erkennt jederzeit, dass es Körper sind (kein „Dreieck, das Pyramide
   heißt“). Sie tauchen je nach Schwierigkeit ab bestimmten Leveln auf.
 - **Energie-Mechanik mit echter Spannung:** Das Schiff startet mit vollem
-  Energie-Akku (kleine **Batterie oben rechts**, wie die Akku-Anzeige eines
-  Handys – formlich eindeutig und klar vom goldenen Level-Fortschrittsbalken
-  zu unterscheiden). Jede **falsch** gefangene Form kostet Energie (je nach
-  Schwierigkeitsstufe unterschiedlich viel) – ist der Akku leer, ist die
-  **Mission zu Ende** (Ergebnis-Anzeige + „Neue Mission“-Button; Punkte und
-  Level starten wieder bei 0, nur der Rekord bleibt). Der Akku füllt sich in
-  Zellen und färbt sich von Grün über Gelb nach Rot – er blinkt, wenn es
-  knapp wird.
-- **Bonus-Extras:** goldene ⚡-Energiekapseln laden den Balken wieder auf
-  (und kommen öfter, wenn die Energie knapp ist), blaue 🛡️-Schutzschild-
+  Energie-Akku – eine kleine **Batterie oben links im Spielfeld** (wie die
+  Akku-Anzeige eines Handys, formlich eindeutig und klar vom goldenen
+  Level-Fortschrittsbalken zu unterscheiden). Die Batterie hat **vier
+  Zellen**: Jede **falsch** gefangene Form löscht eine Zelle – nach **vier
+  Fehlgriffen** ist die **Mission zu Ende** (Ergebnis-Anzeige + „Neue
+  Mission“-Button; Punkte und Level starten wieder bei 0, nur der Rekord
+  bleibt). Bei den letzten Zellen färbt sich der Akku gelb bzw. rot und
+  blinkt. Eine ⚡-Kapsel lädt eine Zelle wieder auf.
+- **Bonus-Extras:** goldene ⚡-Energiekapseln laden eine Akku-Zelle wieder
+  auf (und kommen öfter, wenn die Energie knapp ist), blaue 🛡️-Schutzschild-
   Kapseln legen eine schimmernde Energie-Blase um das Schiff, die die
   nächsten **2 Fehlgriffe** abfängt. Beides gibt zusätzlich +25 Punkte.
 - **Eigenes SVG-Raumschiff:** der Geo-Gleiter ist ein selbst gezeichnetes
@@ -60,7 +60,8 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
   Versehen die „falschen“ Formen der alten Aufgabe ein. Danach eine kurze
   **Atempause** (es kommen kurz keine neuen Formen), dann erscheint und
   ertönt der neue Auftrag und es geht weiter.
-- **Startbildschirm:** ein ruhiger, wertiger Auftakt mit Titel und
+- **Startbildschirm:** ein ruhiger, wertiger Auftakt mit dem echten
+  SVG-Raumschiff (dasselbe, das man im Spiel steuert), Titel und
   „Los geht’s!“-Knopf – der erste Tipp schaltet zugleich Ton und
   Sprachausgabe frei (Browser erlauben das erst nach einer echten Geste).
 - **Wischfläche + Steuerung:** eigener Wisch-Streifen **unter** dem

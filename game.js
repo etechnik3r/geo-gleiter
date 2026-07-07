@@ -95,10 +95,13 @@
   const PUNKTE_BONUS   = 25;   // eingesammeltes Extra (⚡/🛡️)
   const ZIEL_PRO_LEVEL = 10;   // alle 10 richtigen Formen -> neues Level
 
-  // Energie-Mechanik
-  const ENERGIE_MAX          = 100;
-  const ENERGIE_KAPSEL_PLUS  = 35;   // so viel laedt eine ⚡-Kapsel auf
-  const ENERGIE_LEVEL_BONUS  = 15;   // kleines Aufladen als Level-Belohnung
+  // Energie-Mechanik: die Energie ist in ZELLEN gedacht (wie eine Batterie).
+  // ENERGIE_MAX = Anzahl der Zellen = so viele Fehlgriffe verkraftet das
+  // Schiff, bis die Mission zu Ende ist. Jeder Fehlgriff loescht eine Zelle,
+  // eine ⚡-Kapsel laedt eine wieder auf.
+  const ENERGIE_MAX          = 4;    // 4 Zellen -> 4 Fehlgriffe bis Schluss
+  const ENERGIE_KAPSEL_PLUS  = 1;    // so viele Zellen laedt eine ⚡-Kapsel auf
+  const ENERGIE_LEVEL_BONUS  = 1;    // eine Zelle als Level-Belohnung (bis voll)
   const SCHILD_LADUNGEN      = 2;    // so viele Fehlgriffe faengt 🛡️ ab
 
   // Bonus-Extras (Details siehe bonusErzeugen):
@@ -112,11 +115,12 @@
   //   formMin/Max   = Groessen-Streuung der Formen in Pixel
   //   trefferQuote  = Anteil der Formen, die zum Auftrag passen
   //   rampe         = wie viel schneller/dichter es PRO LEVEL wird
-  //   energieVerlust= wie viel Energie ein Fehlgriff kostet
+  // (Ein Fehlgriff kostet immer GENAU eine Energie-Zelle – unabhaengig von
+  //  der Stufe; die Schwierigkeit steckt in Tempo, Dichte und Formen-Vorrat.)
   const STUFEN = {
-    leicht: { fallDauer: 7.0, spawnAbstand: 2.4,  formMin: 52, formMax: 88, trefferQuote: 0.55, rampe: 0.04, energieVerlust: 18 },
-    mittel: { fallDauer: 5.2, spawnAbstand: 1.7,  formMin: 42, formMax: 80, trefferQuote: 0.45, rampe: 0.05, energieVerlust: 25 },
-    schwer: { fallDauer: 4.0, spawnAbstand: 1.25, formMin: 36, formMax: 74, trefferQuote: 0.40, rampe: 0.06, energieVerlust: 34 }
+    leicht: { fallDauer: 7.0, spawnAbstand: 2.4,  formMin: 52, formMax: 88, trefferQuote: 0.55, rampe: 0.04 },
+    mittel: { fallDauer: 5.2, spawnAbstand: 1.7,  formMin: 42, formMax: 80, trefferQuote: 0.45, rampe: 0.05 },
+    schwer: { fallDauer: 4.0, spawnAbstand: 1.25, formMin: 36, formMax: 74, trefferQuote: 0.40, rampe: 0.06 }
   };
   const TEMPO_DECKEL = 0.5;    // nie schneller als 50 % der Grund-Falldauer
 
@@ -208,7 +212,7 @@
     auftragSymbol: $("auftrag-symbol"),
     fortschritt:   $("fortschritt-balken"),
     energie:       $("energie"),
-    energieBalken: $("energie-balken"),
+    energieZellen: document.querySelectorAll("#energie .akku-zelle"),
     startOverlay:  $("start-overlay"),
     buttonStart:   $("button-start"),
     startRekord:   $("start-rekord"),
@@ -598,7 +602,7 @@
       state.energieUhr += dt;
       if (state.energieUhr >= state.naechsteEnergie) {
         state.energieUhr = 0;
-        state.naechsteEnergie = state.energie < 40
+        state.naechsteEnergie = state.energie <= 1
           ? zufallZwischen(7, 12)
           : zufallZwischen(13, 20);
         bonusErzeugen("energie");
@@ -821,7 +825,7 @@
       punkteAendern(-PUNKTE_FALSCH, f.x, f.y);
       tonFalsch();
       flammeZeigen();
-      energieAendern(-stufe().energieVerlust);
+      energieAendern(-1);          // ein Fehlgriff = eine Zelle weniger
       serieSetzen(0);
 
       el.fehlerBlitz.classList.remove("an");
@@ -843,12 +847,14 @@
     if (state.energie <= 0) missionEnde();
   }
 
-  // Energie-Balken faerben: gruen -> gelb (unter 55 %) -> rot (unter 30 %).
+  // Akku zeichnen: die vollen Zellen leuchten, verbrauchte werden dunkel.
+  // Farbe nach Restladung: >=3 Zellen gruen, 2 Zellen gelb, <=1 rot + Blinken.
   function energieAnzeigen() {
-    el.energieBalken.style.width = state.energie + "%";
-    el.energie.classList.toggle("knapp", state.energie <= 30);
-    el.energie.classList.toggle("mittel",
-      state.energie > 30 && state.energie <= 55);
+    el.energieZellen.forEach((zelle, i) => {
+      zelle.classList.toggle("leer", i >= state.energie);
+    });
+    el.energie.classList.toggle("knapp", state.energie <= 1);
+    el.energie.classList.toggle("mittel", state.energie === 2);
   }
 
   // Schutzschild aktivieren (volle Ladungen) bzw. Anzeige aktualisieren.

@@ -376,68 +376,81 @@ body {
 }
 
 
-/* 4b) ENERGIE-AKKU (oben rechts in der Top-Bar) --------------------------------
+/* 4b) ENERGIE-AKKU (oben links IM Spielfeld) -----------------------------------
    Die "Lebensanzeige" des Schiffs als kleine Batterie – vertraut wie die
    Akku-Anzeige eines Handys und formlich EINDEUTIG als Batterie erkennbar.
-   Dadurch nicht mehr mit dem schmalen (jetzt goldenen) Level-Fortschritts-
-   balken zu verwechseln. Sie leert sich in "Zellen" von voll nach leer und
-   faerbt sich von Gruen ueber Gelb nach Rot; wird sie knapp, blinkt sie. */
+   Sie sitzt als schwebendes HUD-Abzeichen oben links im Weltraum (nimmt kaum
+   Spielflaeche weg) und zeigt in VIER Zellen, wie viele Fehlgriffe das Schiff
+   noch verkraftet: jeder Fehler loescht eine Zelle. Bei den letzten Zellen
+   faerbt sie sich gelb/rot und blinkt. (Klar vom goldenen Level-Fortschritts-
+   balken in der Konsole zu unterscheiden – andere Form UND anderer Ort.) */
 .akku {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 8;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  flex: none;
-  padding: 3px 4px;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.08);
+  gap: 4px;
+  padding: 5px 7px;
+  border-radius: 13px;
+  background: rgba(10, 16, 40, 0.5);
+  box-shadow: 0 3px 10px rgba(2, 8, 30, 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: none;         /* nie im Weg beim Wischen */
 }
 .akku-blitz {
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1;
   filter: drop-shadow(0 1px 2px rgba(2, 8, 30, 0.6));
 }
-/* Batterie-Huelle: dunkles Fenster mit heller Kontur */
+/* Batterie-Huelle: dunkles Fenster mit heller Kontur, darin die 4 Zellen */
 .akku-huelle {
-  position: relative;
-  width: 42px;
-  height: 21px;
+  display: flex;
+  align-items: stretch;
+  gap: 2.5px;
+  height: 22px;
+  padding: 3px;
   border: 2.5px solid rgba(232, 240, 255, 0.9);
   border-radius: 5px;
   background: rgba(6, 12, 32, 0.55);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
 }
-.akku-fuellung {
-  width: 100%;
-  height: 100%;
+/* Eine einzelne Ladezelle (= ein verbleibender Fehlgriff) */
+.akku-zelle {
+  width: 9px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--cta), #7ce7bd);
-  transition: width 0.3s ease, background 0.3s ease;
+  background: linear-gradient(180deg, #7ce7bd, var(--cta));
+  box-shadow: 0 0 5px rgba(52, 208, 116, 0.5);
+  transition: opacity 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
 }
-/* Zell-Trennstriche daruebergelegt – so wirkt es wie eine echte Batterie
-   mit einzelnen Ladebalken statt wie ein zweiter Fortschrittsbalken. */
-.akku-zellen {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 11px,
-    rgba(6, 12, 32, 0.55) 11px 13px);
+/* Leere (verbrauchte) Zelle: dunkel und matt */
+.akku-zelle.leer {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
 }
 /* Der kleine Pluspol rechts an der Batterie */
 .akku-knopf {
   width: 3px;
-  height: 9px;
+  height: 10px;
   border-radius: 0 2px 2px 0;
   background: rgba(232, 240, 255, 0.9);
 }
-.akku.mittel .akku-fuellung { background: linear-gradient(90deg, #ffb02c, #ffd23f); }
-.akku.knapp  .akku-fuellung { background: linear-gradient(90deg, #e6483c, #ff8d84); }
-.akku.knapp  { animation: akku-alarm 0.7s ease-in-out infinite alternate; }
+/* Farbe je nach Restladung: ab 2 Zellen gelb, ab 1 Zelle rot + Blinken */
+.akku.mittel .akku-zelle:not(.leer) {
+  background: linear-gradient(180deg, #ffd23f, #ffb02c);
+  box-shadow: 0 0 5px rgba(255, 176, 44, 0.55);
+}
+.akku.knapp .akku-zelle:not(.leer) {
+  background: linear-gradient(180deg, #ff8d84, #e6483c);
+  box-shadow: 0 0 6px rgba(255, 90, 78, 0.7);
+}
+.akku.knapp { animation: akku-alarm 0.7s ease-in-out infinite alternate; }
 @keyframes akku-alarm {
-  to { box-shadow: 0 0 0 2px rgba(255, 90, 78, 0.5),
-                   0 0 10px rgba(255, 90, 78, 0.7); }
+  to { box-shadow: 0 0 0 2px rgba(255, 90, 78, 0.45),
+                   0 0 12px rgba(255, 90, 78, 0.6); }
 }
 
 
@@ -902,10 +915,18 @@ body {
   box-shadow: var(--sh-soft);
 }
 .start-rakete {
-  font-size: 3.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   filter: drop-shadow(0 8px 16px rgba(2, 8, 30, 0.6));
   animation: start-schweben 2.4s ease-in-out infinite alternate;
+}
+/* Dasselbe SVG-Schiff wie im Spiel, nur groesser fuer den Startbildschirm. */
+.start-schiff-svg {
+  width: 76px;
+  height: 95px;
+  display: block;
 }
 @keyframes start-schweben {
   from { transform: translateY(0)    rotate(-6deg); }
@@ -1153,13 +1174,6 @@ body {
   .aktion-button { width: 42px; height: 42px; font-size: 1.15rem; }
   .menue-button { width: 44px; height: 44px; }
   .menue-icon { font-size: 1.55rem; }
-  .akku { gap: 2px; padding: 2px 3px; }
-  .akku-blitz { font-size: 0.78rem; }
-  .akku-huelle { width: 32px; height: 18px; }
-  .akku-zellen {
-    background: repeating-linear-gradient(
-      90deg, transparent 0 8px, rgba(6, 12, 32, 0.55) 8px 10px);
-  }
   .opt-reihe { gap: 8px; }
   .pause-knopfreihe, .neustart-frage-knopfe { gap: 10px; }
   .weiter-button, .neustart-button,
@@ -1179,9 +1193,6 @@ body {
   .aktionen { gap: 4px; }
   .auftrag-symbol { width: 38px; height: 38px; }
   .auftrag-symbol.verboten::after { font-size: 34px; }
-  .akku { padding: 2px; }
-  .akku-blitz { display: none; }          /* auf sehr schmalen Handys nur die Batterie */
-  .akku-huelle { width: 28px; }
 }
 /* Schmale Handys (~375 px und kleiner): Marke etwas kompakter, damit der
    volle Spielname "Geo-Gleiter" auch hier ungekuerzt in die Ecke passt. */
@@ -1195,7 +1206,6 @@ body {
   .aktionen { gap: 3px; }
   .aktion-button { width: 40px; height: 40px; }
   .menue-button { width: 42px; height: 42px; }
-  .akku-huelle { width: 26px; }
 }
 @media (max-height: 640px) {
   .konsole { margin: 6px auto 4px; }

@@ -19,11 +19,12 @@
     (oder direkt auf dem Spielfeld) und faengt nur die richtigen Formen.
 
   ENERGIE-MECHANIK (das Herz der Spannung):
-    Das Schiff startet mit voller Energie. Jede FALSCH gefangene Form
-    kostet Energie – ist der Balken leer, ist die Mission zu Ende
-    (Neustart-Angebot). Eingesammelte ⚡-Energiekapseln laden den Balken
-    wieder auf, ein 🛡️-Schutzschild-Extra legt einen schimmernden Schild
-    um das Schiff, der zwei Fehlgriffe abfaengt.
+    Das Schiff startet mit vollem Energie-Akku (kleine Batterie mit VIER
+    Zellen oben links im Spielfeld). Jede FALSCH gefangene Form loescht eine
+    Zelle – nach vier Fehlgriffen ist die Mission zu Ende (Neustart-Angebot).
+    Eingesammelte ⚡-Energiekapseln laden eine Zelle wieder auf, ein
+    🛡️-Schutzschild-Extra legt einen schimmernden Schild um das Schiff, der
+    zwei Fehlgriffe abfaengt.
 
   LERN-PHASEN (steigen automatisch mit dem Level, Menue ⚙️):
     - Phase 1 (Klasse 1)  : nur die FORM zaehlt ("Sammle Quadrate")
@@ -53,7 +54,7 @@
 
   <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
 
@@ -95,20 +96,6 @@
       </button>
     </div>
     <div class="aktionen">
-      <!-- ENERGIE-AKKU: die "Lebensanzeige" des Schiffs sitzt jetzt als kleine
-           Batterie oben rechts (wie die Akku-Anzeige eines Handys). Sie ist
-           formlich EINDEUTIG als Batterie erkennbar und dadurch klar vom
-           schmalen Level-Fortschrittsbalken in der Konsole zu unterscheiden.
-           Sie fuellt sich in Zellen von voll nach leer und faerbt sich dabei
-           von Gruen ueber Gelb nach Rot; wird sie knapp, blinkt sie. -->
-      <div class="akku" id="energie" role="img" aria-label="Energie des Raumschiffs">
-        <span class="akku-blitz" aria-hidden="true">⚡</span>
-        <div class="akku-huelle" aria-hidden="true">
-          <div class="akku-fuellung" id="energie-balken"></div>
-          <div class="akku-zellen"></div>
-        </div>
-        <span class="akku-knopf" aria-hidden="true"></span>
-      </div>
       <button type="button" class="aktion-button" id="button-pause" aria-label="Pause">⏸️</button>
       <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
         <span class="menue-icon" aria-hidden="true">⚙️</span>
@@ -134,15 +121,33 @@
   </section>
 
 
-  <!-- (Die Energie-Anzeige sitzt jetzt als Akku-Symbol oben rechts in der
-       Top-Bar – siehe oben. So bleibt hier mehr Spielflaeche und sie ist
-       nicht mehr mit dem Level-Fortschrittsbalken zu verwechseln.) -->
+  <!-- (Die Energie-Anzeige sitzt als Akku-Symbol oben links IM Spielfeld –
+       siehe weiter unten. So bleibt oben Platz fuer den vollen Spielnamen
+       und die Anzeige ist nicht mit dem Level-Fortschrittsbalken zu
+       verwechseln.) -->
 
 
   <!-- 3) SPIELFELD: hier fallen die Formen, unten fliegt der Geo-Gleiter.
        Die fallenden Formen werden von game.js als <div class="form"> erzeugt.
        touch-action:none (style.css) verhindert, dass das Wischen scrollt. -->
   <main class="spielfeld" id="spielfeld" aria-label="Spielfeld">
+    <!-- ENERGIE-AKKU: die "Lebensanzeige" des Schiffs sitzt als kleine
+         Batterie oben links IM Weltraum (nimmt kaum Spielflaeche weg und
+         schneidet den Spielnamen in der Leiste nicht mehr ab). Sie zeigt in
+         VIER Zellen, wie viele Fehlgriffe das Schiff noch verkraftet: jeder
+         Fehler loescht eine Zelle, eine ⚡-Kapsel laedt eine wieder auf.
+         Bei den letzten Zellen faerbt sie sich gelb/rot und blinkt. -->
+    <div class="akku" id="energie" role="img" aria-label="Energie des Raumschiffs">
+      <span class="akku-blitz" aria-hidden="true">⚡</span>
+      <div class="akku-huelle" aria-hidden="true">
+        <span class="akku-zelle"></span>
+        <span class="akku-zelle"></span>
+        <span class="akku-zelle"></span>
+        <span class="akku-zelle"></span>
+      </div>
+      <span class="akku-knopf" aria-hidden="true"></span>
+    </div>
+
     <!-- Der Geo-Gleiter: ein SELBST GEZEICHNETES SVG-Raumschiff (kein
          System-Emoji mehr – deren Grafik ist je nach Geraet unberechenbar,
          teils sogar mit fest eingebauten Sternchen). Eigenes SVG heisst:
@@ -223,7 +228,23 @@
        ab da sauber vorgelesen und geklungen. -->
   <div class="start-overlay" id="start-overlay">
     <div class="start-karte">
-      <span class="start-rakete" aria-hidden="true">🚀</span>
+      <!-- Dasselbe selbst gezeichnete SVG-Raumschiff wie im Spiel (kein
+           System-Emoji) – inklusive flackernder Triebwerksflamme. -->
+      <span class="start-rakete" aria-hidden="true">
+        <svg class="start-schiff-svg" viewBox="0 0 64 80">
+          <g class="gleiter-flamme">
+            <path d="M32 61 C38.5 66 39.5 71 32 79.5 C24.5 71 25.5 66 32 61 Z" fill="#ff9e2c"/>
+            <path d="M32 63 C36 66.5 36.5 70 32 75 C27.5 70 28 66.5 32 63 Z" fill="#ffd23f"/>
+          </g>
+          <path d="M26 55.5 L38 55.5 L40.5 62 L23.5 62 Z" fill="#8fa1c7" stroke="#26355e" stroke-width="1.5"/>
+          <path d="M24.5 37 C17.5 42.5 14.5 51 14.5 60.5 L25 53 Z" fill="var(--schiff-akzent)" stroke="#26355e" stroke-width="1.5"/>
+          <path d="M39.5 37 C46.5 42.5 49.5 51 49.5 60.5 L39 53 Z" fill="var(--schiff-akzent)" stroke="#26355e" stroke-width="1.5"/>
+          <path d="M24 20.5 L40 20.5 C41.5 36 40.6 47.5 38.2 56.5 L25.8 56.5 C23.4 47.5 22.5 36 24 20.5 Z" fill="#eef3ff" stroke="#26355e" stroke-width="1.5"/>
+          <path d="M32 2 C37.5 8 40 14 40 21.5 L24 21.5 C24 14 26.5 8 32 2 Z" fill="var(--schiff-akzent)" stroke="#26355e" stroke-width="1.5"/>
+          <circle cx="32" cy="31.5" r="6.5" fill="#3d8bff" stroke="#ffffff" stroke-width="2.5"/>
+          <circle cx="30" cy="29.5" r="2" fill="#bcd9ff"/>
+        </svg>
+      </span>
       <span class="start-studio">JonFie Studios</span>
       <h1 class="start-titel">Geo-Gleiter</h1>
       <p class="start-unter">Die Formen-Jagd</p>
@@ -337,6 +358,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=4"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>
