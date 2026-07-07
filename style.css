@@ -992,6 +992,38 @@ body {
 }
 .start-rekord span { color: var(--gold); font-weight: 800; }
 
+/* App-installieren-Knopf: dezent (nicht so grell wie "Los geht's!"), sitzt
+   ganz unten auf der Startkarte und erscheint nur, wenn eine Installation
+   moeglich ist (siehe game.js). */
+.install-button {
+  min-height: 46px;
+  margin-top: 10px;
+  padding: 0 22px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--on-dark);
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.install-button:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.16); }
+.install-hinweis {
+  margin-top: 10px;
+  padding: 12px 14px;
+  max-width: 280px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #cdd9ff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+}
+.install-hinweis strong { color: var(--gold); }
+
 
 /* 7) KONFETTI + POPOVER (Bausteine wie beim Uhrzeit-Uhu) ----------------------- */
 .konfetti-ebene {

@@ -240,7 +240,9 @@
     buttonMenue:   $("button-einstellungen"),
     menueZu:       $("einstellungen-zu"),
     menueFertig:   $("einstellungen-fertig"),
-    buttonReset:   $("button-reset")
+    buttonReset:   $("button-reset"),
+    buttonInstall: $("button-install"),
+    installHinweis: $("install-hinweis")
   };
 
 
@@ -1438,11 +1440,55 @@
     });
   }
 
+  // Installations-Knopf auf dem Startbildschirm einrichten. Android/Chrome &
+  // Desktop liefern das Ereignis "beforeinstallprompt" – darueber laesst sich
+  // der echte Installations-Dialog oeffnen. iOS/Safari kennt dieses Ereignis
+  // nicht, bietet aber "Zum Home-Bildschirm" im Teilen-Menü an; dort zeigt der
+  // Knopf stattdessen eine kurze Anleitung. Laeuft die Seite schon als
+  // installierte App (standalone), bleibt der Knopf ganz versteckt.
+  function installEinrichten() {
+    const standaloneAktiv =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+    if (standaloneAktiv) return;
+
+    const istIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+    if (istIOS) {
+      el.buttonInstall.hidden = false;
+      el.buttonInstall.addEventListener("click", () => {
+        el.installHinweis.hidden = !el.installHinweis.hidden;
+      });
+      return;
+    }
+
+    let installAngebot = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      installAngebot = e;
+      el.buttonInstall.hidden = false;
+    });
+
+    el.buttonInstall.addEventListener("click", async () => {
+      if (!installAngebot) return;
+      el.buttonInstall.hidden = true;
+      installAngebot.prompt();
+      await installAngebot.userChoice;
+      installAngebot = null;
+    });
+
+    window.addEventListener("appinstalled", () => {
+      el.buttonInstall.hidden = true;
+      el.installHinweis.hidden = true;
+    });
+  }
+
   function start() {
     laden();
     el.rekord.textContent = state.rekord;
     el.startRekord.textContent = state.rekord;
     serviceWorkerRegistrieren();
+    installEinrichten();
 
     // Vor dem ersten Flug liegt der Startbildschirm ueber allem und das Spiel
     // ruht – es faellt noch nichts. Der Druck auf "Los geht's!" weckt Ton +

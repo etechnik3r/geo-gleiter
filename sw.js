@@ -10,15 +10,15 @@
    der Service Worker die frischen Dateien laedt und den alten Cache wegraeumt.
    =========================================================================== */
 
-const CACHE_VERSION = "geo-gleiter-v5";
+const CACHE_VERSION = "geo-gleiter-v6";
 
 // Alle Pfade RELATIV (fuehrendes "./"), damit die App auch in einem
 // Unterverzeichnis (z. B. https://name.github.io/geo-gleiter/) funktioniert.
 const APP_SCHALE = [
   "./",
   "./index.html",
-  "./style.css?v=5",
-  "./game.js?v=5",
+  "./style.css?v=6",
+  "./game.js?v=6",
   "./manifest.webmanifest",
   "./icon.svg",
   "./icon-192.png",

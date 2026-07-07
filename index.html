@@ -61,7 +61,7 @@
 
   <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -266,6 +266,20 @@
       </p>
       <button type="button" class="start-button" id="button-start">🚀 Los geht’s!</button>
       <p class="start-rekord">🏆 Bester Flug: <span id="start-rekord">0</span> Punkte</p>
+
+      <!-- App-Installations-Knopf: erscheint nur, wenn das Geraet eine
+           Installation anbieten kann (Android/Chrome via beforeinstallprompt)
+           oder es sich um iOS handelt (dort zeigt der Knopf stattdessen eine
+           kurze Anleitung, weil Safari keinen automatischen Installations-
+           Dialog kennt). Standardmaessig versteckt, siehe game.js. -->
+      <button type="button" class="install-button" id="button-install" hidden>
+        📲 App installieren
+      </button>
+      <p class="install-hinweis" id="install-hinweis" hidden>
+        Tippe unten im Teilen-Menü <strong>⬆️</strong> auf
+        <strong>„Zum Home-Bildschirm“</strong> – schon startet Geo-Gleiter wie
+        eine echte App, auch offline spielbar.
+      </p>
     </div>
   </div>
 
@@ -370,6 +384,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=5"></script>
+  <script src="game.js?v=6"></script>
 </body>
 </html>
