@@ -164,6 +164,12 @@
     gleiterX: 0,
     zielX: 0,
 
+    // Welt-Versatz: das Spielfeld ist etwas breiter als der Bildschirm.
+    // Lenkt man zu einer Seite, "schwenkt" die Formen-Welt leicht mit
+    // (Kamera-Schwenk) – so wirkt der Flug lebendiger und man erreicht auch
+    // Formen, die knapp ueber dem Rand liegen. Wird aus gleiterX abgeleitet.
+    weltX: 0,
+
     // Spielfeld-Masse (werden bei Start + Resize gemessen)
     feldBreite: 0,
     feldHoehe: 0,
@@ -203,6 +209,9 @@
     fortschritt:   $("fortschritt-balken"),
     energie:       $("energie"),
     energieBalken: $("energie-balken"),
+    startOverlay:  $("start-overlay"),
+    buttonStart:   $("button-start"),
+    startRekord:   $("start-rekord"),
     endeOverlay:   $("ende-overlay"),
     endeText:      $("ende-text"),
     buttonNochmal: $("button-nochmal"),
@@ -299,6 +308,14 @@
     if (l >= 5) p.push("wuerfel");
     if (l >= 7) p.push("pyramide");
     return p;
+  }
+
+  // Wie weit die Formen-Welt beim Lenken zur Seite schwenken darf (und wie
+  // weit Formen ueber die sichtbaren Raender hinaus starten duerfen): ein
+  // paar Prozent der Feldbreite. Klein genug, dass nichts Wichtiges dauerhaft
+  // ausserhalb liegt, gross genug, dass der Flug nicht mehr statisch wirkt.
+  function panMax() {
+    return state.feldBreite * 0.07;
   }
 
   // Spielfeld neu vermessen (Start, Resize, Drehen des Geraets)
@@ -489,7 +506,11 @@
       farbe: farbe,
       bonus: false,
       groesse: groesse,
-      x: zufallZwischen(groesse / 2, state.feldBreite - groesse / 2), // Mitte
+      // Startet in einem etwas BREITEREN Bereich als der Bildschirm (± panMax):
+      // solche Rand-Formen erreicht man nur, wenn man beim Lenken bewusst
+      // ganz nach aussen schwenkt – das macht die Steuerung lebendiger.
+      x: zufallZwischen(groesse / 2 - panMax(),
+                        state.feldBreite - groesse / 2 + panMax()), // Mitte
       y: -groesse,                                    // startet oberhalb
       tempo: geschwindigkeit,
       erledigt: false      // true, sobald gefangen/entfernt (gegen Doppel-Treffer)
@@ -599,20 +620,33 @@
     el.gleiter.style.transform =
       "translateX(" + (state.gleiterX - GLEITER_BREITE / 2) + "px)";
 
+    /* --- b2) Welt-Schwenk: die Formen-Welt driftet sanft ENTGEGEN der
+       Schiffs-Auslenkung (wie ein Kamera-Schwenk). Steht das Schiff mittig,
+       ist der Versatz 0; lenkt man ganz nach rechts, schwenkt die Welt nach
+       links (und gibt rechts die Rand-Formen frei) – und umgekehrt.        */
+    const halbeReichweite = Math.max(1, state.feldBreite / 2 - GLEITER_BREITE / 2);
+    const auslenkung = begrenzen(
+      (state.gleiterX - state.feldBreite / 2) / halbeReichweite, -1, 1);
+    state.weltX = -auslenkung * panMax();
+
     /* --- c) Sternenfeld weiterfliegen lassen (mit Lenk-Parallaxe) --- */
     sterneMalen(dt, state.gleiterX - vorherX);
 
     /* --- d) Formen bewegen, Kollision pruefen, Aufraeumen --- */
     for (let i = state.formen.length - 1; i >= 0; i--) {
       const f = state.formen[i];
-      if (f.erledigt) continue;
+      // Sicherheitsnetz: faengt ein Treffer einen Level-Aufstieg aus, sprengt
+      // formenSprengen() mitten in dieser Schleife weitere Formen weg und
+      // verkuerzt state.formen – dann kann state.formen[i] ins Leere zeigen.
+      if (!f || f.erledigt) continue;
 
       f.y += f.tempo * dt;   // fallen: Geschwindigkeit * vergangene Zeit
 
       // Position per transform setzen (GPU-beschleunigt, kein Reflow).
       // x/y beschreiben die MITTE der Form, transform braucht die Ecke.
+      // weltX schwenkt alle Formen gemeinsam beim Lenken (s. o.).
       f.el.style.transform =
-        "translate(" + (f.x - f.groesse / 2) + "px," +
+        "translate(" + (f.x + state.weltX - f.groesse / 2) + "px," +
                        (f.y - f.groesse / 2) + "px)";
 
       if (beruehrtGleiter(f)) {
@@ -711,10 +745,12 @@
          Luft zwischen ihr und dem Schiff ist.                             */
 
   function beruehrtGleiter(f) {
-    // Fang-Box der Form (leicht verkleinert, s. o.)
+    // Fang-Box der Form (leicht verkleinert, s. o.). Die X-Mitte enthaelt den
+    // Welt-Schwenk weltX, damit Fang-Box und Bild exakt uebereinstimmen.
     const halb = (f.groesse * 0.75) / 2;
-    const formLinks  = f.x - halb;
-    const formRechts = f.x + halb;
+    const formMitteX = f.x + state.weltX;
+    const formLinks  = formMitteX - halb;
+    const formRechts = formMitteX + halb;
     const formOben   = f.y - halb;
     const formUnten  = f.y + halb;
 
@@ -912,6 +948,7 @@
     state.level += 1;
     state.richtigeImLevel = 0;
     state.spawnUhr = -ATEMPAUSE_SEK;             // Atempause: nichts spawnt
+    formenSprengen();                            // alte Formen wegsprengen (s. u.)
     energieAendern(+ENERGIE_LEVEL_BONUS);        // kleine Energie-Belohnung
     konfettiRegnen();
     tonLevelUp();
@@ -942,6 +979,41 @@
       el.konfetti.appendChild(k);
       setTimeout(() => k.remove(), 2200);
     }
+  }
+
+  // LEVEL-ENDE: alle noch fallenden FORMEN gleichzeitig wegsprengen – die
+  // hilfreichen ⚡/🛡️-Extras bleiben aber liegen (sie gehoeren nicht zur
+  // Aufgabe und einsammeln ist immer gut). So wird der Levelwechsel
+  // unmissverstaendlich: der Bildschirm ist kurz leer, und man kann nicht
+  // mehr aus Versehen die "falschen" Formen der alten Aufgabe fangen, waehrend
+  // die neue Aufgabe schon gilt.
+  function formenSprengen() {
+    let anzahl = 0;
+    for (let i = state.formen.length - 1; i >= 0; i--) {
+      const f = state.formen[i];
+      if (f.bonus || f.erledigt) continue;     // Extras verschonen
+      f.erledigt = true;
+      explosionAn(f.x + state.weltX, f.y, f.groesse);
+      const divWeg = f.el;
+      divWeg.classList.add("zerplatzt");
+      setTimeout(() => divWeg.remove(), 340);
+      state.formen.splice(i, 1);
+      anzahl += 1;
+    }
+    if (anzahl > 0) tonExplosion();
+  }
+
+  // Ein kleiner Explosions-Blitz (heller Kern + Ring) an einer Fangstelle.
+  function explosionAn(x, y, groesse) {
+    const ex = document.createElement("div");
+    ex.className = "explosion";
+    const d = Math.round(groesse * 1.5);
+    ex.style.width = d + "px";
+    ex.style.height = d + "px";
+    ex.style.left = x + "px";
+    ex.style.top = y + "px";
+    el.spielfeld.appendChild(ex);
+    setTimeout(() => ex.remove(), 520);
   }
 
 
@@ -997,6 +1069,9 @@
           GLEITER_BREITE / 2,
           state.feldBreite - GLEITER_BREITE / 2
         );
+        // Nach der ersten echten Wischbewegung verblasst der "hier wischen"-
+        // Hinweis dezent – die Steuerung sitzt dann ja schon.
+        if (Math.abs(delta) > 1) el.wischZone.classList.add("gewischt");
       });
 
       const loslassen = () => { fingerAktiv = false; };
@@ -1080,6 +1155,10 @@
     ton(784, 0.24, 0.14, "triangle", 0.25);
     ton(1047, 0.36, 0.30, "triangle", 0.28);
   }
+  function tonExplosion() { // sanftes "Puff", wenn die alten Formen zerplatzen
+    ton(320, 0,    0.14, "sine", 0.10);
+    ton(180, 0.06, 0.20, "sine", 0.09);
+  }
 
   // --- Sprachausgabe (Web Speech API): der Bordcomputer liest Auftraege
   //     vor – wichtig fuer Kinder, die noch nicht (fluessig) lesen. -------
@@ -1162,6 +1241,16 @@
   function pauseUmschalten() {
     if (state.vorbei) return;    // nach Missions-Ende zaehlt nur "Neue Mission"
     pauseSetzen(!state.pausiert);
+  }
+
+  // "Los geht's!" auf dem Startbildschirm: Ton + Sprachausgabe freischalten
+  // (jetzt liegt die noetige Nutzer-Geste vor) und den ersten Flug starten.
+  function spielStarten() {
+    if (!el.startOverlay.hidden) el.startOverlay.hidden = true;
+    audioAufwecken();
+    ersterTipp = false;          // der Start-Klick war die erste Geste
+    pauseSetzen(false);
+    auftragSprechen();           // ersten Auftrag jetzt vorlesen
   }
 
   // Neustart aus dem Pause-Menue: erst sicherheitshalber nachfragen,
@@ -1311,6 +1400,12 @@
   function start() {
     laden();
     el.rekord.textContent = state.rekord;
+    el.startRekord.textContent = state.rekord;
+
+    // Vor dem ersten Flug liegt der Startbildschirm ueber allem und das Spiel
+    // ruht – es faellt noch nichts. Der Druck auf "Los geht's!" weckt Ton +
+    // Sprachausgabe (Browser erlauben das erst nach einer echten Geste).
+    state.pausiert = true;
 
     feldVermessen();
     sterneEinrichten();
@@ -1332,6 +1427,7 @@
     menueEinrichten();
     popoverEinrichten();
 
+    el.buttonStart.addEventListener("click", spielStarten);
     el.buttonPause.addEventListener("click", pauseUmschalten);
     el.buttonWeiter.addEventListener("click", () => pauseSetzen(false));
     el.buttonNeustart.addEventListener("click", neustartFrageZeigen);

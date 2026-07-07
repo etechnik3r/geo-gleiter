@@ -53,7 +53,7 @@
 
   <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
 
@@ -80,7 +80,7 @@
     <button type="button" class="marke" id="button-about" aria-label="Über das Spiel">
       <span class="marke-logo" aria-hidden="true">🚀</span>
       <span class="marke-spalte">
-        <span class="marke-studio">JonFie Studios präsentiert:</span>
+        <span class="marke-studio">JonFie Studios</span>
         <span class="marke-text">Geo-Gleiter</span>
       </span>
     </button>
@@ -95,6 +95,20 @@
       </button>
     </div>
     <div class="aktionen">
+      <!-- ENERGIE-AKKU: die "Lebensanzeige" des Schiffs sitzt jetzt als kleine
+           Batterie oben rechts (wie die Akku-Anzeige eines Handys). Sie ist
+           formlich EINDEUTIG als Batterie erkennbar und dadurch klar vom
+           schmalen Level-Fortschrittsbalken in der Konsole zu unterscheiden.
+           Sie fuellt sich in Zellen von voll nach leer und faerbt sich dabei
+           von Gruen ueber Gelb nach Rot; wird sie knapp, blinkt sie. -->
+      <div class="akku" id="energie" role="img" aria-label="Energie des Raumschiffs">
+        <span class="akku-blitz" aria-hidden="true">⚡</span>
+        <div class="akku-huelle" aria-hidden="true">
+          <div class="akku-fuellung" id="energie-balken"></div>
+          <div class="akku-zellen"></div>
+        </div>
+        <span class="akku-knopf" aria-hidden="true"></span>
+      </div>
       <button type="button" class="aktion-button" id="button-pause" aria-label="Pause">⏸️</button>
       <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
         <span class="menue-icon" aria-hidden="true">⚙️</span>
@@ -120,14 +134,9 @@
   </section>
 
 
-  <!-- 2b) ENERGIE-BALKEN: die "Lebensanzeige" des Schiffs. Falsche Formen
-       kosten Energie, ⚡-Kapseln laden auf. Leer = Mission zu Ende. -->
-  <div class="energie" id="energie" aria-label="Energie des Raumschiffs">
-    <span class="energie-icon" aria-hidden="true">⚡</span>
-    <div class="energie-rahmen" aria-hidden="true">
-      <div class="energie-balken" id="energie-balken"></div>
-    </div>
-  </div>
+  <!-- (Die Energie-Anzeige sitzt jetzt als Akku-Symbol oben rechts in der
+       Top-Bar – siehe oben. So bleibt hier mehr Spielflaeche und sie ist
+       nicht mehr mit dem Level-Fortschrittsbalken zu verwechseln.) -->
 
 
   <!-- 3) SPIELFELD: hier fallen die Formen, unten fliegt der Geo-Gleiter.
@@ -205,6 +214,27 @@
 
   <!-- Kleines Popover: "Über das Spiel" + Erklaerung der Punkte-Chips. -->
   <div class="popover" id="popover" role="status" hidden></div>
+
+
+  <!-- STARTBILDSCHIRM: die ruhige "Startrampe" vor dem ersten Flug. Er gibt
+       dem Spiel einen wertigen Auftakt UND loest ein technisches Problem
+       elegant: Browser erlauben Ton + Sprachausgabe erst nach einer echten
+       Geste – der Druck auf "Los geht's!" ist genau diese Geste, also wird
+       ab da sauber vorgelesen und geklungen. -->
+  <div class="start-overlay" id="start-overlay">
+    <div class="start-karte">
+      <span class="start-rakete" aria-hidden="true">🚀</span>
+      <span class="start-studio">JonFie Studios</span>
+      <h1 class="start-titel">Geo-Gleiter</h1>
+      <p class="start-unter">Die Formen-Jagd</p>
+      <p class="start-text">
+        Steuere dein Raumschiff und fange die Formen,
+        die der Bordcomputer sucht! ⭐
+      </p>
+      <button type="button" class="start-button" id="button-start">🚀 Los geht’s!</button>
+      <p class="start-rekord">🏆 Bester Flug: <span id="start-rekord">0</span> Punkte</p>
+    </div>
+  </div>
 
 
   <!-- EINSTELLUNGS-SEITE (Zahnrad ⚙️) – gleicher Karten-Stil wie Uhrzeit-Uhu -->
@@ -307,6 +337,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=3"></script>
+  <script src="game.js?v=4"></script>
 </body>
 </html>
