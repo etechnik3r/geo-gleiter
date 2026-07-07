@@ -49,13 +49,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Lernspiel zu geometrischen Formen und Farben für Kinder im Grundschulalter.">
   <meta name="theme-color" content="#131b3d">
+
+  <!-- PWA: als App installierbar (Android/Chrome ueber das Manifest + Service
+       Worker, iOS ueber die apple-* Tags). "standalone" startet ohne Browser-
+       Leiste wie eine echte App. -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Geo-Gleiter">
   <title>Geo-Gleiter: Die Formen-Jagd</title>
 
   <!-- Schriften liegen lokal in fonts/ (kein CDN, laeuft auch offline). -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css?v=5">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <!-- iOS legt fuers Home-Screen-Icon dieses PNG an (vollflaechig, iOS rundet
+       die Ecken selbst). -->
+  <link rel="apple-touch-icon" href="icon-apple-180.png">
 </head>
 
 <body>

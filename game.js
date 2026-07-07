@@ -385,7 +385,10 @@
   // Wuerfelt einen neuen Auftrag passend zu Lern-Phase und Formen-Vorrat.
   // Damit es nie langweilig wird, unterscheidet sich der neue Auftrag
   // immer vom vorherigen (andere Form oder andere Farbe).
-  function auftragWuerfeln() {
+  //   stumm=true: nur anzeigen, NICHT vorlesen (z. B. beim Umstellen im
+  //   Menue – dort waere ein sofortiges Vorlesen unpassend; gesprochen wird
+  //   erst wieder, wenn das Spiel weiterlaeuft).
+  function auftragWuerfeln(stumm) {
     const phase = aktuellePhase();
     const pool = aktiverFormenPool();
     const alter = state.auftrag;
@@ -402,7 +405,7 @@
 
     state.auftrag = neuer;
     auftragAnzeigen();
-    auftragSprechen();
+    if (!stumm) auftragSprechen();
   }
 
   // Der Auftrag als schlichter Sprech-Text (fuer die Sprachausgabe).
@@ -1299,9 +1302,14 @@
 
   // --- Einstellungs-Menue (Zahnrad ⚙️) ---
   let warVorMenuePausiert = false;
+  // Merkt sich, ob eine Menue-Aenderung den Auftrag (still) neu gewuerfelt
+  // hat. Falls ja, wird der neue Auftrag EINMAL vorgelesen, wenn das Spiel
+  // weiterlaeuft (Menue zu) – nicht schon beim Antippen im Menue.
+  let auftragImMenueGeaendert = false;
 
   function menueOeffnen() {
     warVorMenuePausiert = state.pausiert;
+    auftragImMenueGeaendert = false;
     pauseSetzen(true);                    // im Menue pausiert das Spiel
     el.pauseOverlay.hidden = true;        // aber ohne Pause-Schild darunter
     el.einstellungen.classList.add("offen");
@@ -1313,6 +1321,11 @@
     el.einstellungen.classList.remove("offen");
     el.einstellungen.setAttribute("aria-hidden", "true");
     pauseSetzen(warVorMenuePausiert);
+    // Wurde im Menue ein neuer Auftrag noetig, jetzt (beim Weiterspielen)
+    // einmal vorlesen – aber nicht, wenn das Spiel gerade zu Ende ist
+    // (dann kommt der Auftrag ohnehin erst mit der "Neuen Mission").
+    if (auftragImMenueGeaendert && !state.vorbei) auftragSprechen();
+    auftragImMenueGeaendert = false;
   }
 
   // Die gewaehlten Options-Karten optisch markieren (Klasse .aktiv)
@@ -1339,8 +1352,20 @@
         state.einstellungen[setting] = karte.dataset.wert;
         menueKartenMarkieren();
         speichern();
-        // Phase/Stufe bestimmen Auftrag + Formen-Vorrat -> sofort neu wuerfeln
-        if (setting === "phase" || setting === "stufe") auftragWuerfeln();
+        // Phase/Stufe bestimmen Auftrag + Formen-Vorrat. Den Auftrag aber NUR
+        // neu wuerfeln, wenn er wirklich nicht mehr passt (andere Lern-Phase
+        // ODER die gesuchte/verbotene Form gibt es im neuen Vorrat nicht mehr).
+        // Und dann STILL – vorgelesen wird erst beim Schliessen des Menues.
+        if (setting === "phase" || setting === "stufe") {
+          const a = state.auftrag;
+          const passtNichtMehr =
+            !a || a.phase !== aktuellePhase() ||
+            aktiverFormenPool().indexOf(a.form) === -1;
+          if (passtNichtMehr) {
+            auftragWuerfeln(true);            // still neu wuerfeln
+            auftragImMenueGeaendert = true;   // beim Schliessen einmal vorlesen
+          }
+        }
         // Sprachausgabe abgeschaltet? Laufende Ansage sofort stoppen.
         if (setting === "sprache" && karte.dataset.wert === "aus" &&
             window.speechSynthesis) {
@@ -1403,10 +1428,21 @@
 
   /* 16. START ---------------------------------------------------------------- */
 
+  // Service Worker registrieren -> App ist installierbar (PWA) und offline
+  // spielbar. Relativer Pfad, damit es auch in einem Unterverzeichnis geht.
+  // Fehlschlaege sind unkritisch (das Spiel laeuft auch ohne Service Worker).
+  function serviceWorkerRegistrieren() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => { /* egal */ });
+    });
+  }
+
   function start() {
     laden();
     el.rekord.textContent = state.rekord;
     el.startRekord.textContent = state.rekord;
+    serviceWorkerRegistrieren();
 
     // Vor dem ersten Flug liegt der Startbildschirm ueber allem und das Spiel
     // ruht – es faellt noch nichts. Der Druck auf "Los geht's!" weckt Ton +

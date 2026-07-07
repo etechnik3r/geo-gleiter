@@ -88,7 +88,11 @@ unter dem Schiff nach links und rechts, um nur die richtigen einzusammeln.
   (Baloo 2 / Nunito).
 - **Browser-native Extras:** Soundeffekte über die Web Audio API
   (programmatisch erzeugt, abschaltbar), Rekord + Einstellungen im
-  `localStorage`, automatische Pause bei Tab-Wechsel, PWA-Manifest.
+  `localStorage`, automatische Pause bei Tab-Wechsel.
+- **Installierbar als App (PWA):** komplettes Web-App-Manifest mit
+  PNG-Icons (192/512) und maskierbarem Icon, iOS-Home-Screen-Tags und ein
+  **Service Worker**, der die ganze App-Schale cached – so lässt sich das
+  Spiel „zum Startbildschirm hinzufügen“ und läuft danach **auch offline**.
 - **Mobile First:** Hochformat-Layout ohne Scrollen, große Schrift für
   Leseanfänger, `touch-action: none` für ruckelfreies Wischen; auf großen
   Bildschirmen bleibt das Spiel eine schmale Säule in der Mitte.
@@ -107,6 +111,12 @@ python3 -m http.server 8000
 # danach im Browser öffnen:  http://localhost:8000
 ```
 
+**Als App installieren (PWA):** über `http://localhost` oder eine echte
+**HTTPS**-Adresse aufrufen (Service Worker laufen nicht per `file://`). Dann
+bietet der Browser „Installieren“ bzw. „Zum Startbildschirm hinzufügen“ an –
+danach startet das Spiel wie eine echte App im Vollbild und funktioniert auch
+ohne Internet.
+
 ## 📁 Dateistruktur
 
 | Datei                  | Inhalt                                                      |
@@ -114,8 +124,10 @@ python3 -m http.server 8000
 | `index.html`           | Struktur/Markup (Top-Bar, Konsole, Spielfeld, Wischfläche, Menü) |
 | `style.css`            | Aussehen, SVG-/3D-Formen, responsives Layout                 |
 | `game.js`              | Gesamte Spiellogik (Game-Loop, Kollision, Touch, Sound, Sprache, Sternenfeld) |
-| `manifest.webmanifest` | PWA-Manifest (installierbar)                                 |
-| `icon.svg`             | App-Icon (Rakete + Formen)                                   |
+| `manifest.webmanifest` | PWA-Manifest (Name, Icons, Farben – installierbar)           |
+| `sw.js`                | Service Worker (cached die App-Schale → offline spielbar)    |
+| `icon.svg` / `icon-maskable.svg` | App-Icons als Vektor (normal + maskierbar)        |
+| `icon-*.png`           | Gerasterte App-Icons (192/512, maskierbar, Apple-Touch)      |
 | `fonts/`               | Lokale Schriften (Baloo 2, Nunito – offline-fähig)           |
 | `README.md`            | Diese Beschreibung                                           |
 
