@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Maskable-App-Icon: VOLLFLAECHIGER Hintergrund (kein abgerundetes Rechteck),
+       damit Android das Icon selbst in Kreis/Squircle zuschneiden kann. Der
+       eigentliche Inhalt (Rakete + Formen) liegt in der inneren Safe-Zone
+       (~10-90 %), damit beim Zuschnitt nichts Wichtiges verloren geht. -->
+  <defs>
+    <linearGradient id="himmel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3767"/>
+      <stop offset="0.55" stop-color="#16204a"/>
+      <stop offset="1" stop-color="#0a1130"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#himmel)"/>
+  <!-- Inhalt in die Safe-Zone skaliert (9..91) -->
+  <g transform="translate(9 9) scale(0.82)">
+    <circle cx="18" cy="20" r="2" fill="#ffffff" opacity="0.9"/>
+    <circle cx="82" cy="14" r="1.5" fill="#ffffff" opacity="0.7"/>
+    <circle cx="88" cy="58" r="2" fill="#ffffff" opacity="0.8"/>
+    <circle cx="12" cy="72" r="1.5" fill="#ffffff" opacity="0.6"/>
+    <!-- kleine Formen -->
+    <circle cx="26" cy="38" r="7" fill="#ff5a4e"/>
+    <rect x="66" y="30" width="13" height="13" rx="2" fill="#34d074" transform="rotate(12 72 36)"/>
+    <path d="M76 78 L84 92 L68 92 Z" fill="#ffd23f"/>
+    <!-- Rakete -->
+    <g transform="rotate(-45 50 62)">
+      <path d="M50 30 C58 40 60 54 58 70 L42 70 C40 54 42 40 50 30 Z" fill="#e9eef9"/>
+      <circle cx="50" cy="50" r="6" fill="#3d8bff"/>
+      <path d="M42 60 L32 74 L42 72 Z" fill="#ff5a4e"/>
+      <path d="M58 60 L68 74 L58 72 Z" fill="#ff5a4e"/>
+      <path d="M46 70 L50 84 L54 70 Z" fill="#f3c44a"/>
+    </g>
+  </g>
+</svg>
